@@ -1,54 +1,76 @@
-Data Scientist Agent
-An enterprise-grade autonomous data science agent that bridges the gap between natural language business questions and large data warehouses. Instead of ungrounded text-to-SQL or LLM-hallucinated math, Atlas routes questions to specialized deterministic data-science modules (Lookups, Anomaly Detection, Root-Cause/Driver Decomposition, and Predictive Churn), generates SQL strictly constrained to an authorized active workspace schema, validates queries via Abstract Syntax Tree (AST) execution gates, and outputs evidence-backed findings.
+# Data Scientist Agent
 
+Data Scientist Agent is a design for a controlled analytics assistant that turns business questions into evidence-backed answers over a data warehouse. It is intended for questions such as:
 
-Key Capabilities
-Grounded Intent Routing: Classifies complex business queries into deterministic modules (lookup, anomaly, drivers, churn, clarify, refuse).
+- Was the drop in weekly orders unusual, and what factors contributed to it?
+- Which customer segments may be at risk of churn, and where should a person investigate first?
+- What was revenue by category last year?
 
-Hybrid Schema Retrieval: BM25 lexical search combined with dense MiniLM vector embeddings and Reciprocal Rank Fusion (RRF) over warehouse metadata and certified join-graphs.
+Rather than relying on a language model to invent schema, calculate results, or assert causes, the design grounds queries in catalogued data, validates them before execution, uses tested analytical modules, and ties claims in the final answer to recorded evidence.
 
-Workspace Isolation: Generates SQL against an explicit context-bound active schema workspace, preventing hallucinated tables and columns.
+> **Project status:** This repository documents the proposed system and its evaluation plan. Targets in the design are goals, not measured results. Dataset selection and licensing review are still to be finalized; consult the detailed design for current scope and prototype milestones.
 
-AST Validation & Auto-Repair: Enforces SELECT-only semantics, role-based allowlists, and join boundaries using SQLGlot AST validation, with up to 2 automated repair attempts before graceful refusal.
+## Design principles
 
-Deterministic Code/ML Analytics: LLMs never perform arithmetic. Anomalies are scored via Median Absolute Deviation (MAD) robust z-scores; drivers are decomposed via exposure-shift algorithms; churn is predicted via calibrated gradient boosting.
+- **Fixed, typed workflow:** application code controls the sequence, budgets, retries, and allowed analysis modules.
+- **Grounded SQL:** retrieve the relevant schema and approved join paths first. Use deterministic SQL compilation for fully governed metrics; otherwise generate SQL against the retrieved schema only.
+- **Validate before execution:** reject unsafe or out-of-scope SQL, enforce read-only execution, and check result quality and governed metric totals.
+- **Keep analysis deterministic:** statistical and ML modules compute figures; language models may propose, draft, repair, or explain, but do not calculate results or decide whether SQL is safe.
+- **Show the evidence:** link numeric and causal-sounding claims to query results or analysis outputs, and limit causal language to the evidence grade.
+- **Fail closed:** clarify or refuse when the schema, data, confidence, or history is insufficient. Recommendations require human approval; the agent does not take operational action.
 
-Evidence-Backed Synthesis: Final answers separate correlation from causation, linking every stated metric directly to executed query outputs.
+## Architecture and workflow
 
-System Architecture & Workflow
-Plaintext
-User Question
-    │
-    ▼
-[API Gateway / FastAPI] ──► PII Scrubbing & Trace ID Generation
-    │
-    ▼
-[Intent & Route Parser] ──► Rules + LLM Fallback (Lookup / Anomaly / Drivers / Churn / Refuse)
-    │
-    ▼
-[Hybrid Schema Retrieval] ─► BM25 + MiniLM + RRF Join-Graph Search
-    │
-    ▼
-[Workspace Builder] ──────► Assemble certified tables, columns, and metric registry
-    │
-    ▼
-[SQL Planner] ────────────► Constrained JSON Query Plan (Workspace-only)
-    │
-    ▼
-[SQLGlot AST Validator] ──► Enforce SELECT-only, check allowlists (≤2 repairs or refuse)
-    │
-    ▼
-[DuckDB Warehouse] ───────► Read-only execution with role caps
-    │
-    ▼
-[Deterministic ML Engine] ─► MAD Z-scores / Driver Decomposition / Churn Scoring
-    │
-    ▼
-[Evidence Synthesis] ─────► Fact-checked explanation, query traces, and audit logs
+The proposed flow is:
 
-Security & Guardrails
-AST Read-Only Enforcement: Queries are parsed and verified using sqlglot. Operations including DROP, INSERT, UPDATE, DELETE, ALTER, and nested sub-query leaks are rejected before reaching the database.
+1. A Guard checks the question for unsafe requests and injection attempts.
+2. The Router and Extractor identify the question type and relevant metric, dimensions, and time window. Ambiguity leads to clarification.
+3. The Planner proposes a bounded sequence of registered Analysts for compound questions; code validates the plan.
+4. The Metric Resolver checks governed definitions, and the Answerability Checker determines whether the catalog can answer.
+5. The Schema Retriever finds relevant tables, columns, approved join paths, and stored values. Low-confidence retrieval leads to clarification or refusal.
+6. A SQL Compiler handles fully governed metrics; otherwise a SQL Generator drafts a query using only retrieved schema.
+7. A Validator checks the query, allowlist, joins, fan-out risk, and cost before a read-only Executor runs it. A Repairer may try up to two fixes against the same schema.
+8. A Reconciler checks results. Registered Analysts and the Advisor produce typed outputs when needed.
+9. The Evidence Ledger records claims and sources. The Synthesizer drafts from that ledger, and the Fact Checker verifies claims before returning an answer.
 
-No Database Writes: The DuckDB connection is initialized with read-only flags (read_only=True).
+![System architecture diagram](docs/Architecture.png)
 
-Strict Refusal Mechanism: Questions targeting non-existent fields, uncertified calculations, or restricted columns (e.g., PII) return deterministic refusals and offer narrower, supported lookups instead of fabricating responses.
+![Question-to-answer workflow diagram](docs/Workflow.png)
+
+See [DESIGN_DETAIL.md](docs/DESIGN_DETAIL.md) for the Mermaid source and full step contracts: [architecture (B1)](docs/DESIGN_DETAIL.md#b1-architecture-diagram), [workflow (B2)](docs/DESIGN_DETAIL.md#b2-workflow-diagram). [Approach.md](docs/Approach.md) provides the shorter overview and component glossary.
+
+## Analysis modules
+
+| Module | Intended method and safeguards |
+|---|---|
+| **Lookup** | Answer a grounded data question with validated SQL; use the SQL Compiler when the metric and dimensions are fully governed. |
+| **Anomaly Analyst** | Compare a time series with an appropriate seasonal or robust baseline, account for multiple comparisons, and return “insufficient evidence” for sparse data. |
+| **Driver Analyst** | Decompose changes into contributions, quantify uncertainty, check comparison groups and co-movement, and label the strength and limits of evidence. |
+| **Risk Analyst** | Predict churn using leakage-safe chronological splits; compare against simple baselines and report calibration and segment-level risk. |
+| **Advisor** | Rank a small set of evidence-linked options from a curated Action Library. A person approves any operational action. |
+
+The proposed design defers autonomous actions, free-form model-written code execution, multi-turn dialogue management, and full causal-graph estimation.
+
+## Data and evaluation
+
+The evaluation plan combines public text-to-SQL benchmarks (after license review), a public transactional dataset, and synthetic enterprise-style data with planted anomalies, drivers, confounders, negative controls, and churn behavior. The synthetic generator is intended to provide scale variants of approximately 50, 200, and 500 tables.
+
+Development and held-out snapshots and question sets are kept separate. Evaluation compares:
+
+- A naive text-to-SQL baseline;
+- A grounded SQL system with retrieval, validation, and repair;
+- The full system with governed metrics, Analysts, and evidence checks.
+
+Measures include result-match SQL accuracy, schema and safety violations, retrieval quality, anomaly and driver performance against planted truth, churn calibration, refusal and over-refusal, claim faithfulness, latency, and cost. A prototype passes only if all hard safety gates are zero and each quality and operational criterion meets its pre-set threshold. Targets must not be reported as results; measured results should include model/version, commit, data snapshot, and date.
+
+## Security, privacy, and governance
+
+The design calls for read-only database credentials, a retrieved-schema allowlist, approved joins, query cost and result limits, and validation before execution. Database text is treated as data, not instructions. Sensitive values are masked or excluded from profiles, prompts, traces, and logs. Access scoping is a design requirement; full row-level security is deferred. Public data sources require license and provenance review, and real personal data must not be used without consent.
+
+## Project documentation
+
+- [docs/Approach.md](docs/Approach.md) — concise system approach and glossary.
+- [docs/DESIGN_DETAIL.md](docs/DESIGN_DETAIL.md) — detailed design, diagrams, data strategy, evaluation, risks, and delivery plan.
+- [docs/Architecture.png](docs/Architecture.png) and [docs/Workflow.png](docs/Workflow.png) — rendered design diagrams.
+
+The detailed plan proposes prototype milestones from `v0.1` (end-to-end SQL slice and baseline) through `v1.0` (held-out evaluation, scale testing, and deployment). See [Section F](docs/DESIGN_DETAIL.md#section-f--delivery-plan-prototypes-deployment-repository) for milestone details.
