@@ -1,0 +1,152 @@
+# Governed Semantic Layer - Metric Definitions
+# Compatible with dbt Semantic Layer / Cube / LookML patterns (§B6)
+
+version: 1
+metrics:
+  - name: revenue
+    description: "Gross Merchandise Value (GMV) of successfully delivered orders, excluding freight."
+    synonyms:
+      - sales
+      - gmv
+      - spend
+      - total revenue
+      - total sales
+      - turnover
+    formula: "ROUND(SUM(oi.price), 2)"
+    time_grain: month
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "o.order_status = 'delivered'"
+    allowed_dimensions:
+      - customer_state
+      - product_category_name
+      - seller_state
+      - payment_type
+    join_path:
+      - "JOIN order_items oi ON o.order_id = oi.order_id"
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+      - "LEFT JOIN products p ON oi.product_id = p.product_id"
+    caveats:
+      - "Revenue is computed only on delivered orders."
+      - "Freight value is excluded from revenue."
+      - "Cancelled and unavailable orders are excluded."
+    reconciliation_query: |
+      SELECT ROUND(SUM(oi.price), 2)
+      FROM orders o
+      JOIN order_items oi ON o.order_id = oi.order_id
+      WHERE o.order_status = 'delivered'
+
+  - name: orders
+    description: "Total count of active customer purchase orders."
+    synonyms:
+      - order count
+      - volume
+      - purchases
+      - total orders
+      - order volume
+    formula: "COUNT(DISTINCT o.order_id)"
+    time_grain: week
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "o.order_status NOT IN ('canceled', 'unavailable')"
+    allowed_dimensions:
+      - customer_state
+      - order_status
+      - product_category_name
+    join_path:
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+    caveats:
+      - "Includes delivered, shipped, and processing orders."
+      - "Excludes cancelled and unavailable orders."
+    reconciliation_query: |
+      SELECT COUNT(DISTINCT order_id)
+      FROM orders
+      WHERE order_status NOT IN ('canceled', 'unavailable')
+
+  - name: delivered_orders
+    description: "Count of successfully delivered and fulfilled orders."
+    synonyms:
+      - completed orders
+      - fulfilled orders
+      - delivered volume
+    formula: "COUNT(DISTINCT o.order_id)"
+    time_grain: month
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "o.order_status = 'delivered'"
+    allowed_dimensions:
+      - customer_state
+      - product_category_name
+    join_path:
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+    caveats:
+      - "Restricted exclusively to orders with status 'delivered'."
+    reconciliation_query: "SELECT COUNT(DISTINCT order_id) FROM orders WHERE order_status = 'delivered'"
+
+  - name: average_order_value
+    description: "Average order basket spend (AOV) on delivered purchases."
+    synonyms:
+      - aov
+      - avg order value
+      - average basket size
+    formula: "ROUND(SUM(oi.price) / COUNT(DISTINCT o.order_id), 2)"
+    time_grain: month
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "o.order_status = 'delivered'"
+    allowed_dimensions:
+      - customer_state
+      - product_category_name
+    join_path:
+      - "JOIN order_items oi ON o.order_id = oi.order_id"
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+    caveats:
+      - "Calculated on delivered orders only."
+
+  - name: delivery_delay
+    description: "Average days elapsed between order purchase timestamp and customer delivery date."
+    synonyms:
+      - delivery time
+      - shipping duration
+      - transit days
+      - delay days
+    formula: "ROUND(AVG(EXTRACT(EPOCH FROM (o.order_delivered_customer_date - o.order_purchase_timestamp)) / 86400.0), 2)"
+    time_grain: week
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "o.order_status = 'delivered'"
+      - "o.order_delivered_customer_date IS NOT NULL"
+      - "o.order_purchase_timestamp IS NOT NULL"
+    allowed_dimensions:
+      - customer_state
+    join_path:
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+    caveats:
+      - "Computed as days elapsed between purchase timestamp and customer delivery timestamp."
+
+  - name: review_score
+    description: "Average customer satisfaction rating (CSAT) from post-purchase surveys on 1-5 scale."
+    synonyms:
+      - average rating
+      - customer satisfaction
+      - csat
+      - rating
+    formula: "ROUND(AVG(r.review_score), 2)"
+    time_grain: month
+    date_column: "o.order_purchase_timestamp"
+    base_table: "orders o"
+    required_filters:
+      - "r.review_score IS NOT NULL"
+    allowed_dimensions:
+      - customer_state
+      - product_category_name
+    join_path:
+      - "JOIN order_reviews r ON o.order_id = r.order_id"
+      - "LEFT JOIN customers c ON o.customer_id = c.customer_id"
+    caveats:
+      - "Based on verified post-purchase order reviews on a 1 to 5 scale."

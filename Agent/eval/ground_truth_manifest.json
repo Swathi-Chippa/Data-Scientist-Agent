@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "database": "brazil_ecommerce.db",
+    "split": "held_out_evaluation",
+    "description": "Planted ground-truth manifest for evaluating Anomaly, Driver, Risk, and SQL modules."
+  },
+  "anomalies": [
+    {
+      "id": "ANOM-01",
+      "unit": "SP",
+      "metric": "orders",
+      "period": "2018-07-09",
+      "anomaly_type": "sharp_dip",
+      "true_actual": 351,
+      "true_expected": 640.0,
+      "true_pct_drop": -45.1,
+      "is_anomaly": true,
+      "notes": "Sharp mid-July drop in S\u00e3o Paulo order intake."
+    },
+    {
+      "id": "ANOM-02",
+      "unit": "RJ",
+      "metric": "orders",
+      "period": "2018-05-28",
+      "anomaly_type": "sustained_level_shift",
+      "true_actual": 180,
+      "true_expected": 280.0,
+      "true_pct_drop": -35.7,
+      "is_anomaly": true,
+      "notes": "Late-May transportation disruption drop in Rio."
+    },
+    {
+      "id": "NEG-01",
+      "unit": "SP",
+      "metric": "orders",
+      "period": "2018-04-16",
+      "anomaly_type": "negative_control",
+      "true_actual": 612,
+      "true_expected": 625.0,
+      "true_pct_drop": -2.1,
+      "is_anomaly": false,
+      "notes": "Standard operational week; MUST NOT trigger an anomaly alert."
+    },
+    {
+      "id": "NEG-02",
+      "unit": "MG",
+      "metric": "orders",
+      "period": "2018-03-12",
+      "anomaly_type": "negative_control",
+      "true_actual": 254,
+      "true_expected": 248.0,
+      "true_pct_drop": 2.4,
+      "is_anomaly": false,
+      "notes": "Ordinary spring week; false-positive test."
+    },
+    {
+      "id": "NEG-03",
+      "unit": "AC",
+      "metric": "orders",
+      "period": "2018-05-14",
+      "anomaly_type": "low_volume_guard",
+      "true_actual": 4,
+      "true_expected": 5.0,
+      "true_pct_drop": -20.0,
+      "is_anomaly": false,
+      "notes": "Low-volume state (Acre). Volume guard MUST return 'insufficient evidence'."
+    }
+  ],
+  "drivers": [
+    {
+      "id": "DRV-01",
+      "unit": "SP",
+      "target_period": "2018-06",
+      "baseline_period": "2018-05",
+      "metric": "orders",
+      "net_change": -400,
+      "true_top_drivers": [
+        {
+          "category": "relogios_presentes",
+          "true_share": 0.16,
+          "true_delta": -64
+        },
+        {
+          "category": "esporte_lazer",
+          "true_share": 0.122,
+          "true_delta": -49
+        },
+        {
+          "category": "utilidades_domesticas",
+          "true_share": 0.067,
+          "true_delta": -27
+        }
+      ],
+      "confounder": {
+        "variable": "review_comment_message_length",
+        "co_moving": true,
+        "is_causal": false,
+        "rule": "Must be labeled correlation only, not cause."
+      }
+    }
+  ],
+  "churn_risk": {
+    "observation_cutoff": "2018-03-01",
+    "outcome_window_days": 90,
+    "overall_one_time_buyer_prevalence": 0.97,
+    "high_risk_segment": "High-Spend Single Buyers",
+    "benchmark_top_20_lift_min": 1.15
+  },
+  "sql_invariants": [
+    {
+      "id": "SQL-TRAP-01",
+      "title": "Cancelled order exclusion test",
+      "question": "What was total revenue in 2017?",
+      "trap": "Must filter order_status = 'delivered' and exclude 'canceled' orders.",
+      "expected_min_val": 7000000.0,
+      "expected_max_val": 7500000.0
+    },
+    {
+      "id": "SQL-TRAP-02",
+      "title": "Fan-out join trap",
+      "question": "Total payments and items for order 00010242fe8c59d542453f4d5b308f07",
+      "trap": "Direct join between items and payments must not artificially duplicate line item price.",
+      "expected_item_count": 1,
+      "expected_payment_value": 72.19
+    }
+  ]
+}

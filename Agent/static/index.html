@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Scientist Agent — Brazilian E-Commerce Analytics</title>
+  <meta name="description" content="Schema-grounded, statistically disciplined Data Scientist Agent over DuckDB with full audit tracing and evidence grading.">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="brand-logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+          <path d="M2 12h20"></path>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">Data Scientist Agent</h1>
+        <span class="brand-subtitle">DuckDB Warehouse • Brazilian E-Commerce</span>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-analyst" id="tab-btn-analyst">
+        <span class="tab-icon">💬</span> Executive Assistant
+      </button>
+      <button class="nav-tab" data-tab="tab-traces" id="tab-btn-traces">
+        <span class="tab-icon">🔍</span> Trace Inspector (<span id="trace-count-badge">0</span>)
+      </button>
+      <button class="nav-tab" data-tab="tab-benchmarks" id="tab-btn-benchmarks">
+        <span class="tab-icon">📊</span> Observability & Benchmarks
+      </button>
+      <button class="nav-tab" data-tab="tab-catalog" id="tab-btn-catalog">
+        <span class="tab-icon">🗄️</span> Schema & Metrics
+      </button>
+    </nav>
+
+    <div class="nav-status">
+      <span class="status-indicator online"></span>
+      <span class="status-text">Warehouse Connected</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- TAB 1: EXECUTIVE ASSISTANT -->
+    <section class="tab-pane active" id="tab-analyst">
+      <!-- Question Input Card -->
+      <div class="glass-card query-card">
+        <div class="card-header">
+          <h2>Ask Business Question</h2>
+          <span class="pill pill-cyan">Controlled Analytical Workflow</span>
+        </div>
+        
+        <!-- Preset Quick Test Chips -->
+        <div class="preset-chips">
+          <span class="chip-label">Test Scenarios:</span>
+          <button class="chip" data-q="Weekly orders in SP dropped sharply last month — is that unusual, and what is driving it?">
+            🚨 Anchor 1: SP Anomaly & Root Cause
+          </button>
+          <button class="chip" data-q="Which customer segments are we most likely to lose next quarter, and where should we act first?">
+            🎯 Anchor 2: Churn Risk & Actions
+          </button>
+          <button class="chip" data-q="What was total revenue by category?">
+            📈 Governed Revenue Lookup
+          </button>
+          <button class="chip" data-q="How are sales doing?">
+            ❓ Ambiguous Clarification
+          </button>
+          <button class="chip" data-q="What is average customer age by state?">
+            🛑 Unanswerable Refusal
+          </button>
+          <button class="chip" data-q="DROP TABLE orders; -- injection test">
+            🛡️ Guard Security Block
+          </button>
+        </div>
+
+        <form id="query-form" class="query-form">
+          <div class="input-wrapper">
+            <textarea id="question-input" rows="2" placeholder="Ask about anomalies, root causes, churn risk, or revenue (e.g. 'Weekly orders in SP dropped sharply last month — is that unusual, and what is driving it?')..." required></textarea>
+            <button type="submit" id="submit-btn" class="btn btn-primary">
+              <span id="btn-text">Analyze</span>
+              <span id="btn-spinner" class="spinner hidden"></span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Execution Status / Loading State -->
+      <div id="loading-state" class="glass-card loading-card hidden">
+        <div class="pipeline-loader">
+          <div class="pulse-ring"></div>
+          <div class="loader-steps">
+            <span class="step-pill active" id="p-step-1">1. Guard</span>
+            <span class="step-arrow">→</span>
+            <span class="step-pill" id="p-step-2">2. Route</span>
+            <span class="step-arrow">→</span>
+            <span class="step-pill" id="p-step-3">3. Schema</span>
+            <span class="step-arrow">→</span>
+            <span class="step-pill" id="p-step-4">4. SQL Compile</span>
+            <span class="step-arrow">→</span>
+            <span class="step-pill" id="p-step-5">5. Analysts</span>
+            <span class="step-arrow">→</span>
+            <span class="step-pill" id="p-step-6">6. Fact Check</span>
+          </div>
+          <p class="loader-text" id="loader-status-text">Validating safety and retrieving schema allowlist...</p>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div id="result-view" class="result-container hidden">
+        <!-- Route Banner & KPI row -->
+        <div class="route-banner glass-card" id="route-banner">
+          <div class="banner-left">
+            <span class="route-badge" id="res-route-badge">ANOMALY</span>
+            <span class="route-reason" id="res-route-reason">Treated as compound anomaly + root cause.</span>
+          </div>
+          <div class="banner-stats">
+            <div class="kpi-mini">
+              <span class="kpi-val" id="stat-latency">182ms</span>
+              <span class="kpi-lbl">Total Latency</span>
+            </div>
+            <div class="kpi-mini">
+              <span class="kpi-val" id="stat-sql-time">41ms</span>
+              <span class="kpi-lbl">SQL Execution</span>
+            </div>
+            <div class="kpi-mini">
+              <span class="kpi-val" id="stat-claims">8</span>
+              <span class="kpi-lbl">Ledger Claims</span>
+            </div>
+            <div class="kpi-mini">
+              <span class="kpi-val" id="stat-safety">PASSED</span>
+              <span class="kpi-lbl">Hard Safety Gate</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive Conclusion Card -->
+        <div class="glass-card conclusion-card">
+          <div class="card-header">
+            <h3>Executive Conclusion</h3>
+            <span class="pill pill-emerald" id="res-status-pill">Evidence-Verified</span>
+          </div>
+          <div class="conclusion-body" id="res-conclusion-text"></div>
+
+          <!-- Dynamic Chart Container -->
+          <div class="chart-box hidden" id="chart-wrapper">
+            <canvas id="analysis-chart"></canvas>
+          </div>
+
+          <!-- Causal Boundary Alert (§E5) -->
+          <div class="alert alert-causal hidden" id="causal-boundary-box">
+            <div class="alert-icon">⚖️</div>
+            <div class="alert-content">
+              <strong>Mandatory Causal Boundary (§E5):</strong>
+              <p id="causal-boundary-text"></p>
+            </div>
+          </div>
+
+          <!-- Caveats List -->
+          <div class="caveats-box" id="caveats-container">
+            <h4>Caveats & Warehouse Context:</h4>
+            <ul id="caveats-list"></ul>
+          </div>
+        </div>
+
+        <!-- Prioritized Recommendations (Advisor) -->
+        <div class="glass-card recommendations-card hidden" id="reco-card">
+          <div class="card-header">
+            <h3>Prioritized Operational Recommendations</h3>
+            <span class="pill pill-purple">Human-in-the-Loop Required</span>
+          </div>
+          <p class="section-desc">Ranked by <code>Impact × Evidence Confidence × Feasibility</code>. The agent recommends; leadership approves.</p>
+          <div class="reco-list" id="reco-list"></div>
+        </div>
+
+        <!-- Evidence Ledger Table (§B11, §B12) -->
+        <div class="glass-card ledger-card">
+          <div class="card-header">
+            <h3>Evidence Ledger</h3>
+            <span class="pill pill-blue">Zero Unsourced Claims</span>
+          </div>
+          <p class="section-desc">Every statement and figure is numbered, linked to a query or analyst artifact, and graded from Grade 0 (Fact) to Grade 4 (Consistent with cause).</p>
+          <div class="table-responsive">
+            <table class="data-table" id="ledger-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Evidence Grade</th>
+                  <th>Statement / Metric Claim</th>
+                  <th>Source</th>
+                  <th>Verification</th>
+                </tr>
+              </thead>
+              <tbody id="ledger-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Executed SQL Card -->
+        <div class="glass-card sql-card" id="sql-card">
+          <div class="card-header">
+            <h3>Executed SQL Query</h3>
+            <div class="sql-meta">
+              <span class="pill pill-gray" id="sql-timing-pill">41.2ms</span>
+              <span class="pill pill-cyan" id="sql-source-pill">Compiler (Governed)</span>
+            </div>
+          </div>
+          <pre class="sql-code"><code id="sql-code-block">SELECT ...</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: TRACE INSPECTOR -->
+    <section class="tab-pane" id="tab-traces">
+      <div class="trace-layout">
+        <!-- Trace Sidebar -->
+        <div class="glass-card trace-sidebar">
+          <h3>Execution Runs</h3>
+          <p class="text-muted">Saved file-based audit runs:</p>
+          <div class="trace-file-list" id="trace-file-list">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Trace Deep Dive View -->
+        <div class="glass-card trace-detail-panel">
+          <div class="card-header">
+            <h3 id="trace-detail-title">Trace Details</h3>
+            <span class="pill pill-cyan" id="trace-detail-id">Select a trace</span>
+          </div>
+          <div class="trace-timeline" id="trace-timeline-body">
+            <p class="text-muted">Click any run on the left to inspect its complete 14-step timeline, millisecond timings, AST checks, and intermediate tables.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: OBSERVABILITY & BENCHMARKS -->
+    <section class="tab-pane" id="tab-benchmarks">
+      <div class="glass-card benchmark-card">
+        <div class="card-header">
+          <h2>Evaluation Framework & Baseline Comparison (§D3, §D4)</h2>
+          <span class="pill pill-emerald">Tag: v1.0 PASSED</span>
+        </div>
+        <p class="section-desc">
+          Evaluated against the held-out test suite across 25 curated test cases on identical queries and database state.
+          Directly compares <strong>System C (Full Agent)</strong> against <strong>Baseline B (Grounded SQL Only)</strong> and <strong>Baseline A (Naive Text-to-SQL)</strong>.
+        </p>
+
+        <!-- Benchmark Matrix Table -->
+        <div class="table-responsive">
+          <table class="data-table benchmark-table">
+            <thead>
+              <tr>
+                <th>Evaluation Dimension</th>
+                <th>Naive Baseline A</th>
+                <th>Grounded Baseline B</th>
+                <th>System C (Full Agent)</th>
+                <th>Acceptance Target</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Hard Safety Gate Violations</strong></td>
+                <td><span class="badge badge-red">2 Violations</span></td>
+                <td><span class="badge badge-red">3 Violations</span></td>
+                <td><span class="badge badge-green">0 Violations</span></td>
+                <td>Must be exactly 0</td>
+              </tr>
+              <tr>
+                <td><strong>Schema Hallucination Rate</strong></td>
+                <td><span class="badge badge-red">20.0%</span></td>
+                <td><span class="badge badge-green">0.0%</span></td>
+                <td><span class="badge badge-green">0.0%</span></td>
+                <td>&lt; 1.0%</td>
+              </tr>
+              <tr>
+                <td><strong>Refusal Recall (Unanswerable attributes)</strong></td>
+                <td><span class="badge badge-red">0.0% (Hallucinates)</span></td>
+                <td><span class="badge badge-yellow">50.0%</span></td>
+                <td><span class="badge badge-green">100.0%</span></td>
+                <td>&gt; 95.0%</td>
+              </tr>
+              <tr>
+                <td><strong>Over-Refusal on Near-Miss Questions</strong></td>
+                <td>0.0%</td>
+                <td>0.0%</td>
+                <td><span class="badge badge-green">0.0%</span></td>
+                <td>Must be 0%</td>
+              </tr>
+              <tr>
+                <td><strong>Security Injection Block Rate</strong></td>
+                <td><span class="badge badge-red">0.0% (Executes)</span></td>
+                <td><span class="badge badge-yellow">66.7%</span></td>
+                <td><span class="badge badge-green">100.0%</span></td>
+                <td>100.0%</td>
+              </tr>
+              <tr>
+                <td><strong>Causal Language Discipline Violations</strong></td>
+                <td>High (Unbounded)</td>
+                <td>N/A (No Analysts)</td>
+                <td><span class="badge badge-green">0 Violations</span></td>
+                <td>Must be 0</td>
+              </tr>
+              <tr>
+                <td><strong>Median Latency (p50)</strong></td>
+                <td>16.3ms</td>
+                <td>64.9ms</td>
+                <td><strong>80.3ms</strong></td>
+                <td>&lt; 500ms</td>
+              </tr>
+              <tr>
+                <td><strong>Tail Latency (p95)</strong></td>
+                <td>21.7ms</td>
+                <td>71.1ms</td>
+                <td><strong>320.6ms</strong></td>
+                <td>&lt; 1500ms</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="eval-report-box" id="eval-report-raw">
+          <!-- Dynamic JSON snippet from evaluation_report.json -->
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SCHEMA & METRICS EXPLORER -->
+    <section class="tab-pane" id="tab-catalog">
+      <div class="catalog-grid">
+        <div class="glass-card">
+          <div class="card-header">
+            <h3>Canonical Warehouse Tables</h3>
+            <span class="pill pill-cyan">DuckDB: brazil_ecommerce.db</span>
+          </div>
+          <div class="schema-cards">
+            <div class="schema-item">
+              <div class="schema-name"><code>orders</code> <span class="badge badge-blue">99,441 rows</span></div>
+              <p class="schema-desc">Primary purchase transactions, approval timestamps, customer delivery milestones, and status.</p>
+            </div>
+            <div class="schema-item">
+              <div class="schema-name"><code>order_items</code> <span class="badge badge-blue">112,650 rows</span></div>
+              <p class="schema-desc">Line-item prices, freight values, product IDs, and seller foreign keys.</p>
+            </div>
+            <div class="schema-item">
+              <div class="schema-name"><code>customers</code> <span class="badge badge-blue">99,441 rows</span></div>
+              <p class="schema-desc">Customer master table with <code>customer_unique_id</code>, zip codes, cities, and states.</p>
+            </div>
+            <div class="schema-item">
+              <div class="schema-name"><code>products</code> <span class="badge badge-blue">32,951 rows</span></div>
+              <p class="schema-desc">Product catalog with categories, dimensions, weights, and descriptions.</p>
+            </div>
+            <div class="schema-item">
+              <div class="schema-name"><code>order_payments</code> <span class="badge badge-blue">103,886 rows</span></div>
+              <p class="schema-desc">Payment types (credit card, boleto, voucher), installments, and payment values.</p>
+            </div>
+            <div class="schema-item">
+              <div class="schema-name"><code>order_reviews</code> <span class="badge badge-blue">99,224 rows</span></div>
+              <p class="schema-desc">Customer satisfaction ratings (1 to 5 stars), survey dates, and customer comments.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <div class="card-header">
+            <h3>Metric Registry (§B6)</h3>
+            <span class="pill pill-purple">Governed Fast Path</span>
+          </div>
+          <div class="registry-list">
+            <div class="reg-item">
+              <div class="reg-title"><code>revenue</code> (GMV)</div>
+              <div class="reg-formula"><code>ROUND(SUM(oi.price), 2)</code></div>
+              <div class="reg-filter">Filter: <code>order_status = 'delivered'</code> (Excludes cancellations & freight)</div>
+            </div>
+            <div class="reg-item">
+              <div class="reg-title"><code>orders</code> (Volume)</div>
+              <div class="reg-formula"><code>COUNT(DISTINCT o.order_id)</code></div>
+              <div class="reg-filter">Filter: <code>order_status NOT IN ('canceled', 'unavailable')</code></div>
+            </div>
+            <div class="reg-item">
+              <div class="reg-title"><code>delivery_delay</code> (Days)</div>
+              <div class="reg-formula"><code>ROUND(AVG(EPOCH(delivered - purchase) / 86400.0), 2)</code></div>
+              <div class="reg-filter">Filter: <code>order_status = 'delivered' AND delivered IS NOT NULL</code></div>
+            </div>
+            <div class="reg-item">
+              <div class="reg-title"><code>review_score</code> (CSAT)</div>
+              <div class="reg-formula"><code>ROUND(AVG(r.review_score), 2)</code></div>
+              <div class="reg-filter">Scale: 1 to 5 stars from verified post-purchase surveys</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-left">
+      <span>Data Scientist Agent v1.0 • Built according to <code>DESIGN_DETAIL.md</code></span>
+    </div>
+    <div class="footer-right">
+      <span>Audit Traces: <code>In-Memory</code> • Engine: DuckDB</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

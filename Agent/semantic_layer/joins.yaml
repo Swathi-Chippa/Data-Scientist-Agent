@@ -1,0 +1,59 @@
+# Governed Semantic Layer - Entity Relationships & Join Graph (§B7)
+
+version: 1
+relationships:
+  - left_table: orders
+    right_table: customers
+    left_key: customer_id
+    right_key: customer_id
+    cardinality: "N:1"
+    approved: true
+    description: "Orders placed by individual customer accounts."
+
+  - left_table: orders
+    right_table: order_items
+    left_key: order_id
+    right_key: order_id
+    cardinality: "1:N"
+    approved: true
+    description: "Line items contained within an order."
+
+  - left_table: orders
+    right_table: order_payments
+    left_key: order_id
+    right_key: order_id
+    cardinality: "1:N"
+    approved: true
+    description: "Payment installment records for an order."
+
+  - left_table: orders
+    right_table: order_reviews
+    left_key: order_id
+    right_key: order_id
+    cardinality: "1:N"
+    approved: true
+    description: "Customer review scores and comments for an order."
+
+  - left_table: order_items
+    right_table: products
+    left_key: product_id
+    right_key: product_id
+    cardinality: "N:1"
+    approved: true
+    description: "Product details and categories for each order item."
+
+  - left_table: order_items
+    right_table: sellers
+    left_key: seller_id
+    right_key: seller_id
+    cardinality: "N:1"
+    approved: true
+    description: "Merchant seller information for each order item."
+
+  - left_table: products
+    right_table: category_translation
+    left_key: product_category_name
+    right_key: product_category_name
+    cardinality: "N:1"
+    approved: true
+    description: "English translation mapping for product category names."

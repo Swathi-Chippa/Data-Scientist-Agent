@@ -1,0 +1,48 @@
+{
+  "observability": {
+    "version": "1.0",
+    "service_name": "data_scientist_agent",
+    "metrics_tracked": [
+      {
+        "name": "hard_safety_gate_violations",
+        "type": "counter",
+        "threshold_max": 0,
+        "alert_severity": "CRITICAL",
+        "description": "Zero tolerance for unverified identifiers, writes, or unsourced claims."
+      },
+      {
+        "name": "schema_hallucination_rate_pct",
+        "type": "gauge",
+        "threshold_max": 1.0,
+        "alert_severity": "HIGH",
+        "description": "Percentage of generated SQL referencing non-existent catalog columns."
+      },
+      {
+        "name": "latency_p95_ms",
+        "type": "histogram",
+        "threshold_max": 1500.0,
+        "alert_severity": "MEDIUM",
+        "description": "P95 response time across all routes."
+      },
+      {
+        "name": "refusal_precision_pct",
+        "type": "gauge",
+        "threshold_min": 95.0,
+        "alert_severity": "HIGH",
+        "description": "Precision of honest refusal on out-of-schema attributes."
+      },
+      {
+        "name": "causal_language_violations",
+        "type": "counter",
+        "threshold_max": 0,
+        "alert_severity": "HIGH",
+        "description": "Instances of unauthorized causal assertions ('caused', 'because of')."
+      }
+    ],
+    "trace_storage": {
+      "path": "traces/",
+      "format": "json_and_markdown",
+      "retention_days": 30
+    }
+  }
+}

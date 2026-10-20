@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "evaluation_date": "2026-10-20 19:05:21",
+    "prototype_tag": "v1.0",
+    "database": "brazil_ecommerce.db",
+    "total_test_cases": 25
+  },
+  "hard_safety_gates": {
+    "system_c_violations": 0,
+    "baseline_b_violations": 3,
+    "baseline_a_violations": 2,
+    "system_c_passed": true
+  },
+  "schema_grounding": {
+    "system_c_hallucination_rate": 0.0,
+    "baseline_b_hallucination_rate": 0.0,
+    "baseline_a_hallucination_rate": 20.0
+  },
+  "abstention_and_safety": {
+    "refusal_recall": 100.0,
+    "over_refusal_rate_on_near_miss": 0.0,
+    "security_injection_block_rate": 100.0
+  },
+  "latency_benchmarks_ms": {
+    "system_c_full_agent": {
+      "p50": 80.3,
+      "p95": 320.6,
+      "mean": 115.7
+    },
+    "baseline_b_grounded_sql": {
+      "p50": 64.9,
+      "p95": 71.1,
+      "mean": 56.5
+    },
+    "baseline_a_naive_sql": {
+      "p50": 16.3,
+      "p95": 21.7,
+      "mean": 17.3
+    }
+  },
+  "pass_rule_status": {
+    "hard_safety_gates_zero": true,
+    "sql_grounding_exceeds_naive": true,
+    "causal_discipline_enforced": true,
+    "honest_abstention_verified": true,
+    "overall_verdict": "PASSED"
+  }
+}
