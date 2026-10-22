@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "DQCheckV2": {
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "freshness",
+            "period_completeness",
+            "all_unit_drop",
+            "definition_drift"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "detail"
+      ],
+      "title": "DQCheckV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/DQCheckV2"
+      },
+      "title": "Checks",
+      "type": "array"
+    },
+    "passed": {
+      "title": "Passed",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "passed",
+    "checks"
+  ],
+  "title": "DQResult",
+  "type": "object"
+}

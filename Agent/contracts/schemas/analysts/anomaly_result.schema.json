@@ -1,0 +1,273 @@
+{
+  "$defs": {
+    "ChangePointV2": {
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range"
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "title": "ChangePointV2",
+      "type": "object"
+    },
+    "DQCheckV2": {
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "freshness",
+            "period_completeness",
+            "all_unit_drop",
+            "definition_drift"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "detail"
+      ],
+      "title": "DQCheckV2",
+      "type": "object"
+    },
+    "DQResultV2": {
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/DQCheckV2"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "passed",
+        "checks"
+      ],
+      "title": "DQResult",
+      "type": "object"
+    },
+    "PeerRankV2": {
+      "properties": {
+        "n_at_least_as_large": {
+          "minimum": 0,
+          "title": "N At Least As Large",
+          "type": "integer"
+        },
+        "n_units": {
+          "minimum": 1,
+          "title": "N Units",
+          "type": "integer"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rank",
+        "n_units",
+        "n_at_least_as_large"
+      ],
+      "title": "PeerRankV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "actual": {
+      "title": "Actual",
+      "type": "number"
+    },
+    "baseline_kind": {
+      "enum": [
+        "seasonal_stl",
+        "trailing_robust",
+        "none"
+      ],
+      "title": "Baseline Kind",
+      "type": "string"
+    },
+    "calendar_effects": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Calendar Effects",
+      "type": "array"
+    },
+    "change_point": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ChangePointV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "correction_used": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correction Used"
+    },
+    "data_quality": {
+      "$ref": "#/$defs/DQResultV2"
+    },
+    "deviation_abs": {
+      "title": "Deviation Abs",
+      "type": "number"
+    },
+    "deviation_pct": {
+      "title": "Deviation Pct",
+      "type": "number"
+    },
+    "expected": {
+      "title": "Expected",
+      "type": "number"
+    },
+    "expected_range": {
+      "maxItems": 2,
+      "minItems": 2,
+      "prefixItems": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "number"
+        }
+      ],
+      "title": "Expected Range",
+      "type": "array"
+    },
+    "fallback_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fallback Reason"
+    },
+    "history_periods_used": {
+      "minimum": 0,
+      "title": "History Periods Used",
+      "type": "integer"
+    },
+    "level": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Level",
+      "type": "number"
+    },
+    "peer_rank": {
+      "$ref": "#/$defs/PeerRankV2"
+    },
+    "persistence": {
+      "enum": [
+        "one_off",
+        "sustained",
+        "drift",
+        "unknown"
+      ],
+      "title": "Persistence",
+      "type": "string"
+    },
+    "robust_score": {
+      "title": "Robust Score",
+      "type": "number"
+    },
+    "verdict": {
+      "enum": [
+        "unusual",
+        "within_normal_range",
+        "insufficient_evidence",
+        "data_issue_suspected"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
+    "window": {
+      "title": "Window",
+      "type": "string"
+    }
+  },
+  "required": [
+    "verdict",
+    "window",
+    "actual",
+    "expected",
+    "expected_range",
+    "deviation_pct",
+    "deviation_abs",
+    "robust_score",
+    "persistence",
+    "level",
+    "calendar_effects",
+    "baseline_kind",
+    "history_periods_used",
+    "peer_rank",
+    "data_quality"
+  ],
+  "title": "AnomalyResult",
+  "type": "object"
+}

@@ -1,0 +1,96 @@
+{
+  "_example": true,
+  "module": "driver",
+  "status": "ok",
+  "result": {
+    "metric": "orders",
+    "current_period": "2025-02",
+    "comparison_period": "2025-01",
+    "baseline_source": "previous_period_not_adjusted",
+    "total_change": 20.0,
+    "shares_shown": false,
+    "gross_positive": 80.0,
+    "gross_negative": -60.0,
+    "dimensions": [
+      {
+        "dimension": "channel",
+        "concentration": 0.55,
+        "contributions": [
+          {
+            "value": "online",
+            "baseline": 400.0,
+            "actual": 480.0,
+            "contribution": 80.0,
+            "share": null,
+            "interval": [
+              74.0,
+              86.0
+            ],
+            "sample_size": 240,
+            "unstable": false
+          },
+          {
+            "value": "store",
+            "baseline": 350.0,
+            "actual": 290.0,
+            "contribution": -60.0,
+            "share": null,
+            "interval": [
+              -66.0,
+              -54.0
+            ],
+            "sample_size": 240,
+            "unstable": false
+          }
+        ]
+      }
+    ],
+    "reconciliation_error": 0.0,
+    "price_volume_mix": null,
+    "indicator_tests": [
+      {
+        "indicator": "delivery_days",
+        "lag": 1,
+        "effect_size": 0.42,
+        "p_adjusted": 0.03,
+        "onset_not_later_than_metric": true
+      }
+    ],
+    "comparison_group": {
+      "did_estimate": -0.08,
+      "pretrend_p": 0.41,
+      "placebo_rank": 4,
+      "n_controls": 5,
+      "limited_power": false
+    },
+    "graded_claims": [
+      {
+        "claim_key": "category_concentration",
+        "grade": 1,
+        "criteria_met": {
+          "reconciles": true,
+          "comparison_group": false
+        },
+        "allowed_wording": "The decline was concentrated in home."
+      }
+    ],
+    "data_needed_to_strengthen": [
+      "Inventory availability by category"
+    ],
+    "candidates_examined": 8,
+    "correction_used": "benjamini_hochberg"
+  },
+  "parameters": {
+    "alpha": 0.05
+  },
+  "assumptions": [
+    "Opposing contributions are shown without normalized shares."
+  ],
+  "sources": [
+    "Q_DRIVER_02"
+  ],
+  "artifacts": [],
+  "flags": [
+    "offsetting_contributions"
+  ]
+}

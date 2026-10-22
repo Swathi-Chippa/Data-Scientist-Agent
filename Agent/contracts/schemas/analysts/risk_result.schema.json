@@ -1,0 +1,286 @@
+{
+  "$defs": {
+    "MetricWithIntervalV2": {
+      "properties": {
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "interval"
+      ],
+      "title": "MetricWithIntervalV2",
+      "type": "object"
+    },
+    "RiskDriverV2": {
+      "properties": {
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "importance": {
+          "title": "Importance",
+          "type": "number"
+        }
+      },
+      "required": [
+        "feature",
+        "importance"
+      ],
+      "title": "RiskDriverV2",
+      "type": "object"
+    },
+    "RiskMetricsV2": {
+      "properties": {
+        "brier": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "ece": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "lift_at_k": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MetricWithIntervalV2"
+          },
+          "title": "Lift At K",
+          "type": "object"
+        },
+        "pr_auc": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "prevalence": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "roc_auc": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        }
+      },
+      "required": [
+        "pr_auc",
+        "prevalence",
+        "roc_auc",
+        "brier",
+        "ece",
+        "lift_at_k"
+      ],
+      "title": "RiskMetricsV2",
+      "type": "object"
+    },
+    "RiskSegmentV2": {
+      "properties": {
+        "customers": {
+          "minimum": 0,
+          "title": "Customers",
+          "type": "integer"
+        },
+        "dims": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "mean_risk": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Mean Risk",
+          "type": "number"
+        },
+        "observed_loss_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Loss Rate"
+        },
+        "predicted_loss_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Loss Rate"
+        },
+        "segment": {
+          "title": "Segment",
+          "type": "string"
+        },
+        "value_at_risk": {
+          "minimum": 0,
+          "title": "Value At Risk",
+          "type": "number"
+        }
+      },
+      "required": [
+        "segment",
+        "dims",
+        "customers",
+        "mean_risk",
+        "value_at_risk",
+        "interval"
+      ],
+      "title": "RiskSegmentV2",
+      "type": "object"
+    },
+    "RiskTargetV2": {
+      "properties": {
+        "cutoff": {
+          "title": "Cutoff",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "churn",
+            "second_purchase"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "population": {
+          "title": "Population",
+          "type": "string"
+        },
+        "window_days": {
+          "minimum": 1,
+          "title": "Window Days",
+          "type": "integer"
+        },
+        "window_source": {
+          "enum": [
+            "registry",
+            "data_p90_gap"
+          ],
+          "title": "Window Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "window_days",
+        "window_source",
+        "cutoff",
+        "population"
+      ],
+      "title": "RiskTargetV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "baselines_compared": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Baselines Compared",
+      "type": "array"
+    },
+    "champion_rule_met": {
+      "title": "Champion Rule Met",
+      "type": "boolean"
+    },
+    "exposure_note": {
+      "const": "ranked by exposure, not by expected response",
+      "default": "ranked by exposure, not by expected response",
+      "title": "Exposure Note",
+      "type": "string"
+    },
+    "limits": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limits",
+      "type": "array"
+    },
+    "metrics": {
+      "$ref": "#/$defs/RiskMetricsV2"
+    },
+    "model_used": {
+      "enum": [
+        "heuristic",
+        "bgnbd",
+        "logistic",
+        "gradient_boosted"
+      ],
+      "title": "Model Used",
+      "type": "string"
+    },
+    "one_time_buyer_share": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "One Time Buyer Share",
+      "type": "number"
+    },
+    "risk_drivers": {
+      "items": {
+        "$ref": "#/$defs/RiskDriverV2"
+      },
+      "title": "Risk Drivers",
+      "type": "array"
+    },
+    "segments": {
+      "items": {
+        "$ref": "#/$defs/RiskSegmentV2"
+      },
+      "title": "Segments",
+      "type": "array"
+    },
+    "target": {
+      "$ref": "#/$defs/RiskTargetV2"
+    }
+  },
+  "required": [
+    "target",
+    "one_time_buyer_share",
+    "model_used",
+    "metrics",
+    "baselines_compared",
+    "champion_rule_met",
+    "segments",
+    "risk_drivers",
+    "limits"
+  ],
+  "title": "RiskResult",
+  "type": "object"
+}

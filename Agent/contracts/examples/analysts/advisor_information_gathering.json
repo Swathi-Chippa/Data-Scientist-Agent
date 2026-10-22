@@ -1,0 +1,59 @@
+{
+  "_example": true,
+  "module": "advisor",
+  "status": "ok",
+  "options": [
+    {
+      "action_id": "ACT-05",
+      "title": "Validate inventory and service logs",
+      "kind": "information_gathering",
+      "rank": 1,
+      "max_addressable_impact": {
+        "value": 0.0,
+        "interval": [
+          0.0,
+          0.0
+        ]
+      },
+      "recovery_fraction": {
+        "low": 0.05,
+        "base": 0.1,
+        "high": 0.18
+      },
+      "impact": {
+        "low": 0.0,
+        "base": 0.0,
+        "high": 0.0
+      },
+      "evidence_grade": 0,
+      "feasibility": {
+        "lead_time": "2 days",
+        "cost_class": "very_low",
+        "owner": "Analytics Lead"
+      },
+      "assumptions": [
+        "Capacity is available for the stated action."
+      ],
+      "trade_offs": [
+        "Requires operational follow-through."
+      ],
+      "sensitivity": "Sensitive to the measured segment response.",
+      "monitor": [
+        "Weekly outcome rate"
+      ],
+      "data_that_would_change_ranking": [
+        "Validated intervention response data"
+      ]
+    }
+  ],
+  "assumptions": [
+    "Options are advisory and require human approval."
+  ],
+  "sources": [
+    "Q_ADVISOR_01"
+  ],
+  "artifacts": [],
+  "flags": [
+    "evidence_incomplete"
+  ]
+}

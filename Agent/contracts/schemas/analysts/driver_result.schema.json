@@ -1,0 +1,359 @@
+{
+  "$defs": {
+    "ComparisonGroupV2": {
+      "properties": {
+        "did_estimate": {
+          "title": "Did Estimate",
+          "type": "number"
+        },
+        "limited_power": {
+          "title": "Limited Power",
+          "type": "boolean"
+        },
+        "n_controls": {
+          "minimum": 0,
+          "title": "N Controls",
+          "type": "integer"
+        },
+        "placebo_rank": {
+          "minimum": 1,
+          "title": "Placebo Rank",
+          "type": "integer"
+        },
+        "pretrend_p": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Pretrend P",
+          "type": "number"
+        }
+      },
+      "required": [
+        "did_estimate",
+        "pretrend_p",
+        "placebo_rank",
+        "n_controls",
+        "limited_power"
+      ],
+      "title": "ComparisonGroupV2",
+      "type": "object"
+    },
+    "ContributionV2": {
+      "properties": {
+        "actual": {
+          "title": "Actual",
+          "type": "number"
+        },
+        "baseline": {
+          "title": "Baseline",
+          "type": "number"
+        },
+        "contribution": {
+          "title": "Contribution",
+          "type": "number"
+        },
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "sample_size": {
+          "minimum": 0,
+          "title": "Sample Size",
+          "type": "integer"
+        },
+        "share": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Share"
+        },
+        "unstable": {
+          "title": "Unstable",
+          "type": "boolean"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "baseline",
+        "actual",
+        "contribution",
+        "interval",
+        "sample_size",
+        "unstable"
+      ],
+      "title": "ContributionV2",
+      "type": "object"
+    },
+    "DimensionContributionV2": {
+      "properties": {
+        "concentration": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Concentration",
+          "type": "number"
+        },
+        "contributions": {
+          "items": {
+            "$ref": "#/$defs/ContributionV2"
+          },
+          "title": "Contributions",
+          "type": "array"
+        },
+        "dimension": {
+          "title": "Dimension",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dimension",
+        "concentration",
+        "contributions"
+      ],
+      "title": "DimensionContributionV2",
+      "type": "object"
+    },
+    "GradedClaimV2": {
+      "properties": {
+        "allowed_wording": {
+          "title": "Allowed Wording",
+          "type": "string"
+        },
+        "claim_key": {
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "criteria_met": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Criteria Met",
+          "type": "object"
+        },
+        "grade": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "title": "Grade",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "claim_key",
+        "grade",
+        "criteria_met",
+        "allowed_wording"
+      ],
+      "title": "GradedClaimV2",
+      "type": "object"
+    },
+    "IndicatorTestV2": {
+      "properties": {
+        "effect_size": {
+          "title": "Effect Size",
+          "type": "number"
+        },
+        "indicator": {
+          "title": "Indicator",
+          "type": "string"
+        },
+        "lag": {
+          "title": "Lag",
+          "type": "integer"
+        },
+        "onset_not_later_than_metric": {
+          "title": "Onset Not Later Than Metric",
+          "type": "boolean"
+        },
+        "p_adjusted": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "P Adjusted",
+          "type": "number"
+        }
+      },
+      "required": [
+        "indicator",
+        "lag",
+        "effect_size",
+        "p_adjusted",
+        "onset_not_later_than_metric"
+      ],
+      "title": "IndicatorTestV2",
+      "type": "object"
+    },
+    "PriceVolumeMixV2": {
+      "properties": {
+        "mix": {
+          "title": "Mix",
+          "type": "number"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "volume": {
+          "title": "Volume",
+          "type": "number"
+        }
+      },
+      "required": [
+        "volume",
+        "price",
+        "mix"
+      ],
+      "title": "PriceVolumeMixV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "baseline_source": {
+      "enum": [
+        "anomaly_expected",
+        "same_period_last_year",
+        "previous_period_not_adjusted"
+      ],
+      "title": "Baseline Source",
+      "type": "string"
+    },
+    "candidates_examined": {
+      "minimum": 0,
+      "title": "Candidates Examined",
+      "type": "integer"
+    },
+    "comparison_group": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ComparisonGroupV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "comparison_period": {
+      "title": "Comparison Period",
+      "type": "string"
+    },
+    "correction_used": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Correction Used"
+    },
+    "current_period": {
+      "title": "Current Period",
+      "type": "string"
+    },
+    "data_needed_to_strengthen": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Data Needed To Strengthen",
+      "type": "array"
+    },
+    "dimensions": {
+      "items": {
+        "$ref": "#/$defs/DimensionContributionV2"
+      },
+      "title": "Dimensions",
+      "type": "array"
+    },
+    "graded_claims": {
+      "items": {
+        "$ref": "#/$defs/GradedClaimV2"
+      },
+      "title": "Graded Claims",
+      "type": "array"
+    },
+    "gross_negative": {
+      "title": "Gross Negative",
+      "type": "number"
+    },
+    "gross_positive": {
+      "title": "Gross Positive",
+      "type": "number"
+    },
+    "indicator_tests": {
+      "items": {
+        "$ref": "#/$defs/IndicatorTestV2"
+      },
+      "title": "Indicator Tests",
+      "type": "array"
+    },
+    "metric": {
+      "title": "Metric",
+      "type": "string"
+    },
+    "price_volume_mix": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PriceVolumeMixV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "reconciliation_error": {
+      "title": "Reconciliation Error",
+      "type": "number"
+    },
+    "shares_shown": {
+      "title": "Shares Shown",
+      "type": "boolean"
+    },
+    "total_change": {
+      "title": "Total Change",
+      "type": "number"
+    }
+  },
+  "required": [
+    "metric",
+    "current_period",
+    "comparison_period",
+    "baseline_source",
+    "total_change",
+    "shares_shown",
+    "gross_positive",
+    "gross_negative",
+    "dimensions",
+    "reconciliation_error",
+    "indicator_tests",
+    "graded_claims",
+    "data_needed_to_strengthen",
+    "candidates_examined"
+  ],
+  "title": "DriverResult",
+  "type": "object"
+}

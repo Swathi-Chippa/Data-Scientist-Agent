@@ -1,0 +1,98 @@
+{
+  "_example": true,
+  "module": "driver",
+  "status": "ok",
+  "result": {
+    "metric": "orders",
+    "current_period": "2025-02",
+    "comparison_period": "2025-01",
+    "baseline_source": "previous_period_not_adjusted",
+    "total_change": -120.0,
+    "shares_shown": true,
+    "gross_positive": 12.0,
+    "gross_negative": -132.0,
+    "dimensions": [
+      {
+        "dimension": "category",
+        "concentration": 0.8,
+        "contributions": [
+          {
+            "value": "home",
+            "baseline": 500.0,
+            "actual": 425.0,
+            "contribution": -75.0,
+            "share": 0.625,
+            "interval": [
+              -81.0,
+              -69.0
+            ],
+            "sample_size": 240,
+            "unstable": false
+          },
+          {
+            "value": "beauty",
+            "baseline": 300.0,
+            "actual": 255.0,
+            "contribution": -45.0,
+            "share": 0.375,
+            "interval": [
+              -51.0,
+              -39.0
+            ],
+            "sample_size": 240,
+            "unstable": false
+          }
+        ]
+      }
+    ],
+    "reconciliation_error": 0.0,
+    "price_volume_mix": {
+      "volume": -90.0,
+      "price": -20.0,
+      "mix": -10.0
+    },
+    "indicator_tests": [
+      {
+        "indicator": "delivery_days",
+        "lag": 1,
+        "effect_size": 0.42,
+        "p_adjusted": 0.03,
+        "onset_not_later_than_metric": true
+      }
+    ],
+    "comparison_group": {
+      "did_estimate": -0.08,
+      "pretrend_p": 0.41,
+      "placebo_rank": 4,
+      "n_controls": 5,
+      "limited_power": false
+    },
+    "graded_claims": [
+      {
+        "claim_key": "category_concentration",
+        "grade": 1,
+        "criteria_met": {
+          "reconciles": true,
+          "comparison_group": false
+        },
+        "allowed_wording": "The decline was concentrated in home."
+      }
+    ],
+    "data_needed_to_strengthen": [
+      "Inventory availability by category"
+    ],
+    "candidates_examined": 8,
+    "correction_used": "benjamini_hochberg"
+  },
+  "parameters": {
+    "alpha": 0.05
+  },
+  "assumptions": [
+    "Categories are compared at the same grain."
+  ],
+  "sources": [
+    "Q_DRIVER_01"
+  ],
+  "artifacts": [],
+  "flags": []
+}

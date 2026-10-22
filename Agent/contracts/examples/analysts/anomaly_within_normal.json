@@ -1,0 +1,68 @@
+{
+  "_example": true,
+  "module": "anomaly",
+  "status": "ok",
+  "result": {
+    "verdict": "within_normal_range",
+    "window": "2025-01-06/2025-01-13",
+    "actual": 1000.0,
+    "expected": 1000.0,
+    "expected_range": [
+      940.0,
+      1060.0
+    ],
+    "deviation_pct": 0.0,
+    "deviation_abs": 0.0,
+    "robust_score": 0.1,
+    "persistence": "one_off",
+    "level": 0.01,
+    "correction_used": null,
+    "calendar_effects": [],
+    "baseline_kind": "seasonal_stl",
+    "history_periods_used": 52,
+    "fallback_reason": null,
+    "peer_rank": {
+      "rank": 2,
+      "n_units": 12,
+      "n_at_least_as_large": 2
+    },
+    "change_point": null,
+    "data_quality": {
+      "passed": true,
+      "checks": [
+        {
+          "name": "freshness",
+          "status": "pass",
+          "detail": "Checks passed"
+        },
+        {
+          "name": "period_completeness",
+          "status": "pass",
+          "detail": "Checks passed"
+        },
+        {
+          "name": "all_unit_drop",
+          "status": "pass",
+          "detail": "Checks passed"
+        },
+        {
+          "name": "definition_drift",
+          "status": "pass",
+          "detail": "Checks passed"
+        }
+      ]
+    }
+  },
+  "parameters": {
+    "alpha": 0.01,
+    "grain": "week"
+  },
+  "assumptions": [
+    "Input table is complete for the requested window."
+  ],
+  "sources": [
+    "Q_ANOMALY_01"
+  ],
+  "artifacts": [],
+  "flags": []
+}

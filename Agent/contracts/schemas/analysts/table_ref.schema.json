@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "ColumnSpecV2": {
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "dimension",
+            "measure",
+            "time",
+            "key",
+            "label"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "role"
+      ],
+      "title": "ColumnSpecV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "columns": {
+      "items": {
+        "$ref": "#/$defs/ColumnSpecV2"
+      },
+      "title": "Columns",
+      "type": "array"
+    },
+    "query_id": {
+      "title": "Query Id",
+      "type": "string"
+    },
+    "row_count": {
+      "minimum": 0,
+      "title": "Row Count",
+      "type": "integer"
+    },
+    "uri": {
+      "title": "Uri",
+      "type": "string"
+    }
+  },
+  "required": [
+    "query_id",
+    "columns",
+    "row_count",
+    "uri"
+  ],
+  "title": "TableRef",
+  "type": "object"
+}

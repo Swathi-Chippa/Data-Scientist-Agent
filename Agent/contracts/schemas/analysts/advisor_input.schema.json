@@ -1,0 +1,195 @@
+{
+  "$defs": {
+    "AdvisorOptionV2": {
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "assumptions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumptions",
+          "type": "array"
+        },
+        "data_that_would_change_ranking": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Data That Would Change Ranking",
+          "type": "array"
+        },
+        "evidence_grade": {
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            4
+          ],
+          "title": "Evidence Grade",
+          "type": "integer"
+        },
+        "feasibility": {
+          "$ref": "#/$defs/FeasibilityV2"
+        },
+        "impact": {
+          "$ref": "#/$defs/ImpactRangeV2"
+        },
+        "kind": {
+          "enum": [
+            "intervention",
+            "information_gathering"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_addressable_impact": {
+          "$ref": "#/$defs/MaxAddressableImpactV2"
+        },
+        "monitor": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Monitor",
+          "type": "array"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        },
+        "recovery_fraction": {
+          "$ref": "#/$defs/ImpactRangeV2"
+        },
+        "sensitivity": {
+          "title": "Sensitivity",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "trade_offs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Trade Offs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_id",
+        "title",
+        "kind",
+        "rank",
+        "max_addressable_impact",
+        "recovery_fraction",
+        "impact",
+        "evidence_grade",
+        "feasibility",
+        "assumptions",
+        "trade_offs",
+        "sensitivity",
+        "monitor",
+        "data_that_would_change_ranking"
+      ],
+      "title": "AdvisorOptionV2",
+      "type": "object"
+    },
+    "FeasibilityV2": {
+      "properties": {
+        "cost_class": {
+          "title": "Cost Class",
+          "type": "string"
+        },
+        "lead_time": {
+          "title": "Lead Time",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lead_time",
+        "cost_class",
+        "owner"
+      ],
+      "title": "FeasibilityV2",
+      "type": "object"
+    },
+    "ImpactRangeV2": {
+      "properties": {
+        "base": {
+          "title": "Base",
+          "type": "number"
+        },
+        "high": {
+          "title": "High",
+          "type": "number"
+        },
+        "low": {
+          "title": "Low",
+          "type": "number"
+        }
+      },
+      "required": [
+        "low",
+        "base",
+        "high"
+      ],
+      "title": "ImpactRangeV2",
+      "type": "object"
+    },
+    "MaxAddressableImpactV2": {
+      "properties": {
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "value",
+        "interval"
+      ],
+      "title": "MaxAddressableImpactV2",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "constraints": {
+      "additionalProperties": true,
+      "title": "Constraints",
+      "type": "object"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/AdvisorOptionV2"
+      },
+      "title": "Options",
+      "type": "array"
+    }
+  },
+  "required": [
+    "options"
+  ],
+  "title": "AdvisorInput",
+  "type": "object"
+}

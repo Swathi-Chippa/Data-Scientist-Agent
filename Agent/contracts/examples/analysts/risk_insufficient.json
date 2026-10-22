@@ -1,0 +1,17 @@
+{
+  "_example": true,
+  "module": "risk",
+  "status": "insufficient_evidence",
+  "reason": "The at-risk population has fewer than 100 customers.",
+  "result": null,
+  "parameters": {
+    "cutoff": "2025-01-01",
+    "window_days": 90
+  },
+  "assumptions": [],
+  "sources": [],
+  "artifacts": [],
+  "flags": [
+    "small_population"
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "_example": true,
+  "module": "advisor",
+  "status": "ok",
+  "options": [
+    {
+      "action_id": "ACT-01",
+      "title": "Retain high-value customers",
+      "kind": "intervention",
+      "rank": 1,
+      "max_addressable_impact": {
+        "value": 12000.0,
+        "interval": [
+          8000.0,
+          16000.0
+        ]
+      },
+      "recovery_fraction": {
+        "low": 0.05,
+        "base": 0.1,
+        "high": 0.18
+      },
+      "impact": {
+        "low": 8000.0,
+        "base": 12000.0,
+        "high": 16000.0
+      },
+      "evidence_grade": 2,
+      "feasibility": {
+        "lead_time": "2 weeks",
+        "cost_class": "medium",
+        "owner": "Retention Lead"
+      },
+      "assumptions": [
+        "Capacity is available for the stated action."
+      ],
+      "trade_offs": [
+        "Requires operational follow-through."
+      ],
+      "sensitivity": "Sensitive to the measured segment response.",
+      "monitor": [
+        "Weekly outcome rate"
+      ],
+      "data_that_would_change_ranking": [
+        "Validated intervention response data"
+      ]
+    },
+    {
+      "action_id": "ACT-02",
+      "title": "Audit service records",
+      "kind": "information_gathering",
+      "rank": 2,
+      "max_addressable_impact": {
+        "value": 2000.0,
+        "interval": [
+          1000.0,
+          3000.0
+        ]
+      },
+      "recovery_fraction": {
+        "low": 0.05,
+        "base": 0.1,
+        "high": 0.18
+      },
+      "impact": {
+        "low": 1000.0,
+        "base": 2000.0,
+        "high": 3000.0
+      },
+      "evidence_grade": 1,
+      "feasibility": {
+        "lead_time": "3 days",
+        "cost_class": "low",
+        "owner": "Operations Lead"
+      },
+      "assumptions": [
+        "Capacity is available for the stated action."
+      ],
+      "trade_offs": [
+        "Requires operational follow-through."
+      ],
+      "sensitivity": "Sensitive to the measured segment response.",
+      "monitor": [
+        "Weekly outcome rate"
+      ],
+      "data_that_would_change_ranking": [
+        "Validated intervention response data"
+      ]
+    }
+  ],
+  "assumptions": [
+    "Options are advisory and require human approval."
+  ],
+  "sources": [
+    "Q_ADVISOR_01"
+  ],
+  "artifacts": [],
+  "flags": []
+}

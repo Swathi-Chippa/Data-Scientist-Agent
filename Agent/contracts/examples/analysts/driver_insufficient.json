@@ -1,0 +1,16 @@
+{
+  "_example": true,
+  "module": "driver",
+  "status": "insufficient_evidence",
+  "reason": "The comparison period contains fewer than the minimum rows.",
+  "result": null,
+  "parameters": {
+    "alpha": 0.05
+  },
+  "assumptions": [],
+  "sources": [],
+  "artifacts": [],
+  "flags": [
+    "sparse_input"
+  ]
+}
