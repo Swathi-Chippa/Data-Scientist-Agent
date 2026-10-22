@@ -1,0 +1,32 @@
+# AN-1 analyst and test dependencies.
+# Versions below were observed before the venv install on 2026-10-22;
+# the final venv-resolved versions are recorded at the end of this file.
+
+numpy>=2.5.3                 # installed: 2.5.3
+pandas>=3.0.5                # installed: 3.0.5
+scipy>=1.17.1                # installed: 1.17.1
+scikit-learn>=1.9.0         # installed: 1.9.0
+statsmodels                  # final venv: 0.15.0
+pyarrow>=24.0.0             # installed: 24.0.0
+pytest>=9.1.1                # installed: 9.1.1
+
+# Runtime imports used by the analysts, config, and AnalystOutput contract.
+duckdb                       # final venv: 2.0.0; required by DB-backed analysts/tests
+pydantic>=2.12.5            # final venv: 2.14.1
+python-dotenv>=1.2.3        # final venv: 1.2.4
+
+# Optional change-point implementation; the current anomaly code does not import it.
+# ruptures                    # optional; not installed in the final venv
+
+## Project runtime dependencies
+# Extra packages required after installing the analyst/test list, observed in
+# Agent/.venv on 2026-10-22.
+## Core packages resolved in the final venv:
+# numpy 2.5.4; pandas 3.0.6; scipy 1.18.1; scikit-learn 1.9.1;
+# pyarrow 26.0.0; pytest 9.1.1
+duckdb==2.0.0
+pydantic==2.14.1
+python-dotenv==1.2.4
+PyYAML==6.0.3
+sqlglot==30.24.0
+networkx==3.7
