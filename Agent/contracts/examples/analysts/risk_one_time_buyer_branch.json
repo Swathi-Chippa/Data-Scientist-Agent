@@ -8,7 +8,7 @@
       "window_days": 60,
       "window_source": "data_p90_gap",
       "cutoff": "2025-01-01",
-      "population": "single_purchase_customers"
+      "population": "one_time_buyers"
     },
     "one_time_buyer_share": 0.82,
     "model_used": "bgnbd",
@@ -103,7 +103,7 @@
     "limits": [
       "No intervention response is estimated."
     ],
-    "exposure_note": "ranked by exposure, not by expected response"
+    "exposure_note": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown."
   },
   "parameters": {
     "cutoff": "2025-01-01",

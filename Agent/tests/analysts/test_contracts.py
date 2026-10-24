@@ -8,6 +8,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from src.analysts.contracts import (
+    AdvisorOptionV2,
     AdvisorInputV2,
     AdvisorOutputV2,
     AnalystInputV2,
@@ -59,7 +60,8 @@ def test_contract_support_models_validate() -> None:
         "uri": "parquet://inputs/series.parquet",
     }
     AnalystInputV2.model_validate({"module": "anomaly", "params": {}, "tables": {"series": table_ref}, "run_id": "R1", "seed": 7})
-    AdvisorInputV2.model_validate({"options": [], "constraints": {"max_options": 3}})
+    advisor_input = AdvisorInputV2.model_validate({"action_library_ref": "config/actions.yaml"})
+    assert advisor_input.constraints.max_options == 3
 
 
 def test_schemas_export_without_error(tmp_path: Path) -> None:
@@ -86,3 +88,46 @@ def test_deliberately_broken_example_fails_validation() -> None:
     del broken["result"]["expected"]
     with pytest.raises(ValidationError):
         TypeAdapter(AnalystOutputV2[AnomalyResultV2]).validate_python(broken)
+
+
+def test_analyst_output_ok_requires_result() -> None:
+    broken = _payload(EXAMPLES / "driver_ok.json")
+    broken["result"] = None
+    with pytest.raises(ValidationError, match="result is required"):
+        TypeAdapter(AnalystOutputV2[DriverResultV2]).validate_python(broken)
+
+
+def test_anomaly_unusual_must_be_outside_expected_range() -> None:
+    broken = _payload(EXAMPLES / "anomaly_unusual.json")
+    broken["result"]["actual"] = 1000.0
+    broken["result"]["deviation_pct"] = 0.0
+    with pytest.raises(ValidationError, match="outside expected_range"):
+        TypeAdapter(AnalystOutputV2[AnomalyResultV2]).validate_python(broken)
+
+
+def test_driver_reconciliation_is_required() -> None:
+    broken = _payload(EXAMPLES / "driver_ok.json")
+    broken["result"]["dimensions"][0]["contributions"][0]["contribution"] = -70.0
+    with pytest.raises(ValidationError, match="reconcile"):
+        TypeAdapter(AnalystOutputV2[DriverResultV2]).validate_python(broken)
+
+
+def test_driver_forbids_causal_wording() -> None:
+    broken = _payload(EXAMPLES / "driver_ok.json")
+    broken["result"]["graded_claims"][0]["allowed_wording"] = "The decline was caused by home."
+    with pytest.raises(ValidationError, match="forbidden causal language"):
+        TypeAdapter(AnalystOutputV2[DriverResultV2]).validate_python(broken)
+
+
+def test_risk_second_purchase_requires_one_time_buyers() -> None:
+    broken = _payload(EXAMPLES / "risk_one_time_buyer_branch.json")
+    broken["result"]["target"]["population"] = "all_customers"
+    with pytest.raises(ValidationError, match="one_time_buyers"):
+        TypeAdapter(AnalystOutputV2[RiskResultV2]).validate_python(broken)
+
+
+def test_advisor_option_impact_is_ordered() -> None:
+    broken = _payload(EXAMPLES / "advisor_ok.json")["options"][0]
+    broken["impact"]["base"] = broken["impact"]["high"] + 1
+    with pytest.raises(ValidationError, match="low <= base <= high"):
+        AdvisorOptionV2.model_validate(broken)

@@ -221,8 +221,8 @@
       "type": "boolean"
     },
     "exposure_note": {
-      "const": "ranked by exposure, not by expected response",
-      "default": "ranked by exposure, not by expected response",
+      "const": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown.",
+      "default": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown.",
       "title": "Exposure Note",
       "type": "string"
     },

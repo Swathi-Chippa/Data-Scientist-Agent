@@ -1,26 +1,541 @@
 {
   "$defs": {
-    "AdvisorOptionV2": {
+    "AdvisorConstraintsV2": {
       "properties": {
-        "action_id": {
-          "title": "Action Id",
+        "max_options": {
+          "default": 3,
+          "minimum": 1,
+          "title": "Max Options",
+          "type": "integer"
+        }
+      },
+      "title": "AdvisorConstraintsV2",
+      "type": "object"
+    },
+    "AnomalyResultV2": {
+      "properties": {
+        "actual": {
+          "title": "Actual",
+          "type": "number"
+        },
+        "baseline_kind": {
+          "enum": [
+            "seasonal_stl",
+            "trailing_robust",
+            "none"
+          ],
+          "title": "Baseline Kind",
           "type": "string"
         },
-        "assumptions": {
+        "calendar_effects": {
           "items": {
             "type": "string"
           },
-          "title": "Assumptions",
+          "title": "Calendar Effects",
           "type": "array"
         },
-        "data_that_would_change_ranking": {
+        "change_point": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChangePointV2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "correction_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correction Used"
+        },
+        "data_quality": {
+          "$ref": "#/$defs/DQResultV2"
+        },
+        "deviation_abs": {
+          "title": "Deviation Abs",
+          "type": "number"
+        },
+        "deviation_pct": {
+          "title": "Deviation Pct",
+          "type": "number"
+        },
+        "expected": {
+          "title": "Expected",
+          "type": "number"
+        },
+        "expected_range": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Expected Range",
+          "type": "array"
+        },
+        "fallback_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fallback Reason"
+        },
+        "history_periods_used": {
+          "minimum": 0,
+          "title": "History Periods Used",
+          "type": "integer"
+        },
+        "level": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Level",
+          "type": "number"
+        },
+        "peer_rank": {
+          "$ref": "#/$defs/PeerRankV2"
+        },
+        "persistence": {
+          "enum": [
+            "one_off",
+            "sustained",
+            "drift",
+            "unknown"
+          ],
+          "title": "Persistence",
+          "type": "string"
+        },
+        "robust_score": {
+          "title": "Robust Score",
+          "type": "number"
+        },
+        "verdict": {
+          "enum": [
+            "unusual",
+            "within_normal_range",
+            "insufficient_evidence",
+            "data_issue_suspected"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "window": {
+          "title": "Window",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verdict",
+        "window",
+        "actual",
+        "expected",
+        "expected_range",
+        "deviation_pct",
+        "deviation_abs",
+        "robust_score",
+        "persistence",
+        "level",
+        "calendar_effects",
+        "baseline_kind",
+        "history_periods_used",
+        "peer_rank",
+        "data_quality"
+      ],
+      "title": "AnomalyResult",
+      "type": "object"
+    },
+    "ChangePointV2": {
+      "properties": {
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "method": {
+          "title": "Method",
+          "type": "string"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Range"
+        }
+      },
+      "required": [
+        "method"
+      ],
+      "title": "ChangePointV2",
+      "type": "object"
+    },
+    "ComparisonGroupV2": {
+      "properties": {
+        "did_estimate": {
+          "title": "Did Estimate",
+          "type": "number"
+        },
+        "limited_power": {
+          "title": "Limited Power",
+          "type": "boolean"
+        },
+        "n_controls": {
+          "minimum": 0,
+          "title": "N Controls",
+          "type": "integer"
+        },
+        "placebo_rank": {
+          "minimum": 1,
+          "title": "Placebo Rank",
+          "type": "integer"
+        },
+        "pretrend_p": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Pretrend P",
+          "type": "number"
+        }
+      },
+      "required": [
+        "did_estimate",
+        "pretrend_p",
+        "placebo_rank",
+        "n_controls",
+        "limited_power"
+      ],
+      "title": "ComparisonGroupV2",
+      "type": "object"
+    },
+    "ContributionV2": {
+      "properties": {
+        "actual": {
+          "title": "Actual",
+          "type": "number"
+        },
+        "baseline": {
+          "title": "Baseline",
+          "type": "number"
+        },
+        "contribution": {
+          "title": "Contribution",
+          "type": "number"
+        },
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "sample_size": {
+          "minimum": 0,
+          "title": "Sample Size",
+          "type": "integer"
+        },
+        "share": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Share"
+        },
+        "unstable": {
+          "title": "Unstable",
+          "type": "boolean"
+        },
+        "value": {
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "baseline",
+        "actual",
+        "contribution",
+        "interval",
+        "sample_size",
+        "unstable"
+      ],
+      "title": "ContributionV2",
+      "type": "object"
+    },
+    "DQCheckV2": {
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "name": {
+          "enum": [
+            "freshness",
+            "period_completeness",
+            "all_unit_drop",
+            "definition_drift"
+          ],
+          "title": "Name",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "pass",
+            "warn",
+            "fail",
+            "unknown"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "status",
+        "detail"
+      ],
+      "title": "DQCheckV2",
+      "type": "object"
+    },
+    "DQResultV2": {
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/DQCheckV2"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "passed",
+        "checks"
+      ],
+      "title": "DQResult",
+      "type": "object"
+    },
+    "DimensionContributionV2": {
+      "properties": {
+        "concentration": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Concentration",
+          "type": "number"
+        },
+        "contributions": {
+          "items": {
+            "$ref": "#/$defs/ContributionV2"
+          },
+          "title": "Contributions",
+          "type": "array"
+        },
+        "dimension": {
+          "title": "Dimension",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dimension",
+        "concentration",
+        "contributions"
+      ],
+      "title": "DimensionContributionV2",
+      "type": "object"
+    },
+    "DriverResultV2": {
+      "properties": {
+        "baseline_source": {
+          "enum": [
+            "anomaly_expected",
+            "same_period_last_year",
+            "previous_period_not_adjusted"
+          ],
+          "title": "Baseline Source",
+          "type": "string"
+        },
+        "candidates_examined": {
+          "minimum": 0,
+          "title": "Candidates Examined",
+          "type": "integer"
+        },
+        "comparison_group": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ComparisonGroupV2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "comparison_period": {
+          "title": "Comparison Period",
+          "type": "string"
+        },
+        "correction_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correction Used"
+        },
+        "current_period": {
+          "title": "Current Period",
+          "type": "string"
+        },
+        "data_needed_to_strengthen": {
           "items": {
             "type": "string"
           },
-          "title": "Data That Would Change Ranking",
+          "title": "Data Needed To Strengthen",
           "type": "array"
         },
-        "evidence_grade": {
+        "dimensions": {
+          "items": {
+            "$ref": "#/$defs/DimensionContributionV2"
+          },
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "graded_claims": {
+          "items": {
+            "$ref": "#/$defs/GradedClaimV2"
+          },
+          "title": "Graded Claims",
+          "type": "array"
+        },
+        "gross_negative": {
+          "title": "Gross Negative",
+          "type": "number"
+        },
+        "gross_positive": {
+          "title": "Gross Positive",
+          "type": "number"
+        },
+        "indicator_tests": {
+          "items": {
+            "$ref": "#/$defs/IndicatorTestV2"
+          },
+          "title": "Indicator Tests",
+          "type": "array"
+        },
+        "metric": {
+          "title": "Metric",
+          "type": "string"
+        },
+        "price_volume_mix": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PriceVolumeMixV2"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "reconciliation_error": {
+          "title": "Reconciliation Error",
+          "type": "number"
+        },
+        "shares_shown": {
+          "title": "Shares Shown",
+          "type": "boolean"
+        },
+        "total_change": {
+          "title": "Total Change",
+          "type": "number"
+        }
+      },
+      "required": [
+        "metric",
+        "current_period",
+        "comparison_period",
+        "baseline_source",
+        "total_change",
+        "shares_shown",
+        "gross_positive",
+        "gross_negative",
+        "dimensions",
+        "reconciliation_error",
+        "indicator_tests",
+        "graded_claims",
+        "data_needed_to_strengthen",
+        "candidates_examined"
+      ],
+      "title": "DriverResult",
+      "type": "object"
+    },
+    "GradedClaimV2": {
+      "properties": {
+        "allowed_wording": {
+          "title": "Allowed Wording",
+          "type": "string"
+        },
+        "claim_key": {
+          "title": "Claim Key",
+          "type": "string"
+        },
+        "criteria_met": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Criteria Met",
+          "type": "object"
+        },
+        "grade": {
           "enum": [
             0,
             1,
@@ -28,123 +543,55 @@
             3,
             4
           ],
-          "title": "Evidence Grade",
+          "title": "Grade",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "claim_key",
+        "grade",
+        "criteria_met",
+        "allowed_wording"
+      ],
+      "title": "GradedClaimV2",
+      "type": "object"
+    },
+    "IndicatorTestV2": {
+      "properties": {
+        "effect_size": {
+          "title": "Effect Size",
+          "type": "number"
+        },
+        "indicator": {
+          "title": "Indicator",
+          "type": "string"
+        },
+        "lag": {
+          "title": "Lag",
           "type": "integer"
         },
-        "feasibility": {
-          "$ref": "#/$defs/FeasibilityV2"
+        "onset_not_later_than_metric": {
+          "title": "Onset Not Later Than Metric",
+          "type": "boolean"
         },
-        "impact": {
-          "$ref": "#/$defs/ImpactRangeV2"
-        },
-        "kind": {
-          "enum": [
-            "intervention",
-            "information_gathering"
-          ],
-          "title": "Kind",
-          "type": "string"
-        },
-        "max_addressable_impact": {
-          "$ref": "#/$defs/MaxAddressableImpactV2"
-        },
-        "monitor": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Monitor",
-          "type": "array"
-        },
-        "rank": {
-          "minimum": 1,
-          "title": "Rank",
-          "type": "integer"
-        },
-        "recovery_fraction": {
-          "$ref": "#/$defs/ImpactRangeV2"
-        },
-        "sensitivity": {
-          "title": "Sensitivity",
-          "type": "string"
-        },
-        "title": {
-          "title": "Title",
-          "type": "string"
-        },
-        "trade_offs": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Trade Offs",
-          "type": "array"
-        }
-      },
-      "required": [
-        "action_id",
-        "title",
-        "kind",
-        "rank",
-        "max_addressable_impact",
-        "recovery_fraction",
-        "impact",
-        "evidence_grade",
-        "feasibility",
-        "assumptions",
-        "trade_offs",
-        "sensitivity",
-        "monitor",
-        "data_that_would_change_ranking"
-      ],
-      "title": "AdvisorOptionV2",
-      "type": "object"
-    },
-    "FeasibilityV2": {
-      "properties": {
-        "cost_class": {
-          "title": "Cost Class",
-          "type": "string"
-        },
-        "lead_time": {
-          "title": "Lead Time",
-          "type": "string"
-        },
-        "owner": {
-          "title": "Owner",
-          "type": "string"
-        }
-      },
-      "required": [
-        "lead_time",
-        "cost_class",
-        "owner"
-      ],
-      "title": "FeasibilityV2",
-      "type": "object"
-    },
-    "ImpactRangeV2": {
-      "properties": {
-        "base": {
-          "title": "Base",
-          "type": "number"
-        },
-        "high": {
-          "title": "High",
-          "type": "number"
-        },
-        "low": {
-          "title": "Low",
+        "p_adjusted": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "P Adjusted",
           "type": "number"
         }
       },
       "required": [
-        "low",
-        "base",
-        "high"
+        "indicator",
+        "lag",
+        "effect_size",
+        "p_adjusted",
+        "onset_not_later_than_metric"
       ],
-      "title": "ImpactRangeV2",
+      "title": "IndicatorTestV2",
       "type": "object"
     },
-    "MaxAddressableImpactV2": {
+    "MetricWithIntervalV2": {
       "properties": {
         "interval": {
           "maxItems": 2,
@@ -169,26 +616,359 @@
         "value",
         "interval"
       ],
-      "title": "MaxAddressableImpactV2",
+      "title": "MetricWithIntervalV2",
+      "type": "object"
+    },
+    "PeerRankV2": {
+      "properties": {
+        "n_at_least_as_large": {
+          "minimum": 0,
+          "title": "N At Least As Large",
+          "type": "integer"
+        },
+        "n_units": {
+          "minimum": 1,
+          "title": "N Units",
+          "type": "integer"
+        },
+        "rank": {
+          "minimum": 1,
+          "title": "Rank",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rank",
+        "n_units",
+        "n_at_least_as_large"
+      ],
+      "title": "PeerRankV2",
+      "type": "object"
+    },
+    "PriceVolumeMixV2": {
+      "properties": {
+        "mix": {
+          "title": "Mix",
+          "type": "number"
+        },
+        "price": {
+          "title": "Price",
+          "type": "number"
+        },
+        "volume": {
+          "title": "Volume",
+          "type": "number"
+        }
+      },
+      "required": [
+        "volume",
+        "price",
+        "mix"
+      ],
+      "title": "PriceVolumeMixV2",
+      "type": "object"
+    },
+    "RiskDriverV2": {
+      "properties": {
+        "feature": {
+          "title": "Feature",
+          "type": "string"
+        },
+        "importance": {
+          "title": "Importance",
+          "type": "number"
+        }
+      },
+      "required": [
+        "feature",
+        "importance"
+      ],
+      "title": "RiskDriverV2",
+      "type": "object"
+    },
+    "RiskMetricsV2": {
+      "properties": {
+        "brier": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "ece": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "lift_at_k": {
+          "additionalProperties": {
+            "$ref": "#/$defs/MetricWithIntervalV2"
+          },
+          "title": "Lift At K",
+          "type": "object"
+        },
+        "pr_auc": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "prevalence": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        },
+        "roc_auc": {
+          "$ref": "#/$defs/MetricWithIntervalV2"
+        }
+      },
+      "required": [
+        "pr_auc",
+        "prevalence",
+        "roc_auc",
+        "brier",
+        "ece",
+        "lift_at_k"
+      ],
+      "title": "RiskMetricsV2",
+      "type": "object"
+    },
+    "RiskResultV2": {
+      "properties": {
+        "baselines_compared": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Baselines Compared",
+          "type": "array"
+        },
+        "champion_rule_met": {
+          "title": "Champion Rule Met",
+          "type": "boolean"
+        },
+        "exposure_note": {
+          "const": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown.",
+          "default": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown.",
+          "title": "Exposure Note",
+          "type": "string"
+        },
+        "limits": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Limits",
+          "type": "array"
+        },
+        "metrics": {
+          "$ref": "#/$defs/RiskMetricsV2"
+        },
+        "model_used": {
+          "enum": [
+            "heuristic",
+            "bgnbd",
+            "logistic",
+            "gradient_boosted"
+          ],
+          "title": "Model Used",
+          "type": "string"
+        },
+        "one_time_buyer_share": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "One Time Buyer Share",
+          "type": "number"
+        },
+        "risk_drivers": {
+          "items": {
+            "$ref": "#/$defs/RiskDriverV2"
+          },
+          "title": "Risk Drivers",
+          "type": "array"
+        },
+        "segments": {
+          "items": {
+            "$ref": "#/$defs/RiskSegmentV2"
+          },
+          "title": "Segments",
+          "type": "array"
+        },
+        "target": {
+          "$ref": "#/$defs/RiskTargetV2"
+        }
+      },
+      "required": [
+        "target",
+        "one_time_buyer_share",
+        "model_used",
+        "metrics",
+        "baselines_compared",
+        "champion_rule_met",
+        "segments",
+        "risk_drivers",
+        "limits"
+      ],
+      "title": "RiskResult",
+      "type": "object"
+    },
+    "RiskSegmentV2": {
+      "properties": {
+        "customers": {
+          "minimum": 0,
+          "title": "Customers",
+          "type": "integer"
+        },
+        "dims": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Dims",
+          "type": "object"
+        },
+        "interval": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Interval",
+          "type": "array"
+        },
+        "mean_risk": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Mean Risk",
+          "type": "number"
+        },
+        "observed_loss_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed Loss Rate"
+        },
+        "predicted_loss_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Predicted Loss Rate"
+        },
+        "segment": {
+          "title": "Segment",
+          "type": "string"
+        },
+        "value_at_risk": {
+          "minimum": 0,
+          "title": "Value At Risk",
+          "type": "number"
+        }
+      },
+      "required": [
+        "segment",
+        "dims",
+        "customers",
+        "mean_risk",
+        "value_at_risk",
+        "interval"
+      ],
+      "title": "RiskSegmentV2",
+      "type": "object"
+    },
+    "RiskTargetV2": {
+      "properties": {
+        "cutoff": {
+          "title": "Cutoff",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "churn",
+            "second_purchase"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "population": {
+          "title": "Population",
+          "type": "string"
+        },
+        "window_days": {
+          "minimum": 1,
+          "title": "Window Days",
+          "type": "integer"
+        },
+        "window_source": {
+          "enum": [
+            "registry",
+            "data_p90_gap"
+          ],
+          "title": "Window Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "window_days",
+        "window_source",
+        "cutoff",
+        "population"
+      ],
+      "title": "RiskTargetV2",
       "type": "object"
     }
   },
   "properties": {
-    "constraints": {
-      "additionalProperties": true,
-      "title": "Constraints",
-      "type": "object"
+    "action_library_ref": {
+      "title": "Action Library Ref",
+      "type": "string"
     },
-    "options": {
-      "items": {
-        "$ref": "#/$defs/AdvisorOptionV2"
-      },
-      "title": "Options",
-      "type": "array"
+    "anomaly": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AnomalyResultV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "constraints": {
+      "$ref": "#/$defs/AdvisorConstraintsV2"
+    },
+    "driver": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/DriverResultV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "risk": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RiskResultV2"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [
-    "options"
+    "action_library_ref"
   ],
   "title": "AdvisorInput",
   "type": "object"

@@ -44,6 +44,11 @@
       "title": "Assumptions",
       "type": "array"
     },
+    "contract_version": {
+      "default": "2.0",
+      "title": "Contract Version",
+      "type": "string"
+    },
     "flags": {
       "items": {
         "type": "string"

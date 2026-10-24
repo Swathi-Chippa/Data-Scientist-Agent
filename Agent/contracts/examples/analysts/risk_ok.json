@@ -104,7 +104,7 @@
     "limits": [
       "No intervention response is estimated."
     ],
-    "exposure_note": "ranked by exposure, not by expected response"
+    "exposure_note": "Ranked by exposure (risk x value), not by expected response to an intervention. The warehouse contains no intervention history, so which segments would respond is unknown."
   },
   "parameters": {
     "cutoff": "2025-01-01",

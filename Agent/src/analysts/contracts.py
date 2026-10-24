@@ -6,6 +6,7 @@ the names shared with FE-1 and BE-1 so the serialized contract remains stable.
 
 from __future__ import annotations
 
+from math import isclose
 from typing import Any, Generic, Literal, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -56,6 +57,7 @@ class AnalystOutputV2(ContractModel, Generic[T]):
     model_config = ConfigDict(title="AnalystOutput", extra="ignore")
 
     module: str
+    contract_version: str = "2.0"
     status: Literal["ok", "insufficient_evidence"]
     reason: Optional[str] = None
     result: Optional[T] = None
@@ -67,6 +69,8 @@ class AnalystOutputV2(ContractModel, Generic[T]):
 
     @model_validator(mode="after")
     def reason_required_for_insufficient(self) -> "AnalystOutputV2[T]":
+        if self.status == "ok" and self.result is None:
+            raise ValueError("result is required when status is ok")
         if self.status == "insufficient_evidence" and not self.reason:
             raise ValueError("reason is required when status is insufficient_evidence")
         return self
@@ -123,6 +127,24 @@ class AnomalyResultV2(ContractModel):
     peer_rank: PeerRankV2
     change_point: Optional[ChangePointV2] = None
     data_quality: DQResultV2
+
+    @model_validator(mode="after")
+    def validate_consistency(self) -> "AnomalyResultV2":
+        lower, upper = self.expected_range
+        outside = self.actual < lower or self.actual > upper
+        if self.verdict == "unusual" and not outside:
+            raise ValueError("verdict unusual requires actual outside expected_range")
+        if self.verdict == "within_normal_range" and outside:
+            raise ValueError("verdict within_normal_range requires actual inside expected_range")
+        if not self.data_quality.passed or any(check.status == "fail" for check in self.data_quality.checks):
+            if self.verdict == "unusual":
+                raise ValueError("data_quality failure forbids verdict unusual")
+        if self.expected == 0:
+            if self.deviation_pct != 0:
+                raise ValueError("deviation_pct must be zero when expected is zero")
+        elif not isclose(self.deviation_pct, (self.actual - self.expected) / self.expected, abs_tol=0.1):
+            raise ValueError("deviation_pct must equal (actual - expected) / expected within 0.1 point")
+        return self
 
 
 class ContributionV2(ContractModel):
@@ -196,6 +218,28 @@ class DriverResultV2(ContractModel):
     candidates_examined: int = Field(ge=0)
     correction_used: Optional[str] = None
 
+    @model_validator(mode="after")
+    def validate_reconciliation_and_wording(self) -> "DriverResultV2":
+        tolerance = 0.005 * abs(self.total_change)
+        errors: list[float] = []
+        for dimension in self.dimensions:
+            dimension_total = sum(item.contribution for item in dimension.contributions)
+            if abs(dimension_total - self.total_change) > tolerance:
+                raise ValueError(
+                    f"dimension {dimension.dimension!r} contributions must reconcile to total_change within 0.5%"
+                )
+            errors.append(self.total_change - dimension_total)
+        if errors and any(not isclose(self.reconciliation_error, error, abs_tol=max(tolerance, 1e-12)) for error in errors):
+            raise ValueError("reconciliation_error must match total_change minus each dimension contribution total")
+        if not self.shares_shown and any(item.share is not None for dimension in self.dimensions for item in dimension.contributions):
+            raise ValueError("shares_shown false requires every contribution share to be null")
+        forbidden = ("caused", "because of", "due to", "led to", "resulted in", "responsible for")
+        for claim in self.graded_claims:
+            wording = claim.allowed_wording.casefold()
+            if any(term in wording for term in forbidden):
+                raise ValueError("allowed_wording contains forbidden causal language")
+        return self
+
 
 class RiskTargetV2(ContractModel):
     kind: Literal["churn", "second_purchase"]
@@ -247,9 +291,21 @@ class RiskResultV2(ContractModel):
     segments: list[RiskSegmentV2]
     risk_drivers: list[RiskDriverV2]
     limits: list[str]
-    exposure_note: Literal["ranked by exposure, not by expected response"] = (
-        "ranked by exposure, not by expected response"
+    exposure_note: Literal[
+        "Ranked by exposure (risk x value), not by expected response to an intervention. "
+        "The warehouse contains no intervention history, so which segments would respond is unknown."
+    ] = (
+        "Ranked by exposure (risk x value), not by expected response to an intervention. "
+        "The warehouse contains no intervention history, so which segments would respond is unknown."
     )
+
+    @model_validator(mode="after")
+    def validate_target_metrics(self) -> "RiskResultV2":
+        if self.target.kind == "second_purchase" and self.target.population != "one_time_buyers":
+            raise ValueError("second_purchase target requires population one_time_buyers")
+        if self.metrics.prevalence is None or self.metrics.prevalence.interval is None:
+            raise ValueError("risk metrics must include prevalence with an interval")
+        return self
 
 
 class FeasibilityV2(ContractModel):
@@ -285,18 +341,32 @@ class AdvisorOptionV2(ContractModel):
     monitor: list[str]
     data_that_would_change_ranking: list[str]
 
+    @model_validator(mode="after")
+    def validate_impact_order(self) -> "AdvisorOptionV2":
+        if not (self.impact.low <= self.impact.base <= self.impact.high):
+            raise ValueError("impact must satisfy low <= base <= high")
+        return self
+
+
+class AdvisorConstraintsV2(ContractModel):
+    max_options: int = Field(default=3, ge=1)
+
 
 class AdvisorInputV2(ContractModel):
     model_config = ConfigDict(title="AdvisorInput", extra="ignore")
 
-    options: list[AdvisorOptionV2]
-    constraints: dict[str, Any] = Field(default_factory=dict)
+    anomaly: Optional[AnomalyResultV2] = None
+    driver: Optional[DriverResultV2] = None
+    risk: Optional[RiskResultV2] = None
+    action_library_ref: str
+    constraints: AdvisorConstraintsV2 = Field(default_factory=AdvisorConstraintsV2)
 
 
 class AdvisorOutputV2(ContractModel):
     model_config = ConfigDict(title="AdvisorOutput", extra="ignore")
 
     module: Literal["advisor"] = "advisor"
+    contract_version: str = "2.0"
     status: Literal["ok", "insufficient_evidence"]
     reason: Optional[str] = None
     options: list[AdvisorOptionV2]
