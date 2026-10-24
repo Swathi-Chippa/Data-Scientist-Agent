@@ -11,12 +11,13 @@ Implements:
 - Strict Evidence Grading (Grades 0 to 4)
 - Mandatory Causal Boundary disclaimer (§E5)
 """
-import duckdb
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List, Optional, Tuple
 from src.config import DB_PATH, BOOTSTRAP_SAMPLES, CAUSAL_BOUNDARY_NOTE
 from src.analysts.base import BaseAnalyst, AnalystOutput
+from src.analysts.fetchers_olist import UnknownUnitError, fetch_customer_orders, fetch_indicators, fetch_order_lines, validate_grain
+from src.analysts.legacy_base import LEGACY_WINDOWS
 
 
 class DriverAnalyst(BaseAnalyst):
@@ -30,93 +31,71 @@ class DriverAnalyst(BaseAnalyst):
         """
         Executes root cause attribution for a designated metric and region.
         """
-        region = context.get("region") or context.get("region_or_filter") or "SP"
-        metric_name = context.get("metric") or "orders"
+        legacy_defaults = LEGACY_WINDOWS["driver"]["defaults"]
+        region = context.get("region") or context.get("region_or_filter") or legacy_defaults["region"]
+        metric_name = context.get("metric") or legacy_defaults["metric"]
 
         # Determine reference periods: Period 1 (baseline) vs Period 2 (target drop)
-        period_baseline = context.get("period_baseline", "2018-05")
-        period_current = context.get("period_current", "2018-06")
-
-        con = duckdb.connect(self.db_path, read_only=True)
-        try:
-            # 1. Fetch breakdown by product category in region for both periods
-            cat_query = f"""
-                WITH base AS (
-                    SELECT 
-                        COALESCE(p.product_category_name, 'other') as category,
-                        COUNT(DISTINCT o.order_id) as orders_base,
-                        SUM(oi.price) as revenue_base
-                    FROM orders o
-                    JOIN customers c ON o.customer_id = c.customer_id
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    LEFT JOIN products p ON oi.product_id = p.product_id
-                    WHERE c.customer_state = '{region}'
-                      AND o.order_status = 'delivered'
-                      AND strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') = '{period_baseline}'
-                    GROUP BY 1
-                ),
-                curr AS (
-                    SELECT 
-                        COALESCE(p.product_category_name, 'other') as category,
-                        COUNT(DISTINCT o.order_id) as orders_curr,
-                        SUM(oi.price) as revenue_curr
-                    FROM orders o
-                    JOIN customers c ON o.customer_id = c.customer_id
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    LEFT JOIN products p ON oi.product_id = p.product_id
-                    WHERE c.customer_state = '{region}'
-                      AND o.order_status = 'delivered'
-                      AND strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') = '{period_current}'
-                    GROUP BY 1
+        period_baseline = context.get("period_baseline", legacy_defaults["period_baseline"])
+        period_current = context.get("period_current", legacy_defaults["period_current"])
+        requested_grain = context.get("time_grain")
+        if requested_grain is not None:
+            try:
+                validate_grain(requested_grain)
+            except ValueError:
+                echoed_grain = str(requested_grain)[:40]
+                return AnalystOutput(
+                    analyst_name=self.name,
+                    status="insufficient_evidence",
+                    verdict="",
+                    summary="",
+                    caveats=[f"Time grain '{echoed_grain}' is not supported."],
                 )
-                SELECT 
-                    COALESCE(b.category, c.category) as category,
-                    COALESCE(b.orders_base, 0) as orders_base,
-                    COALESCE(c.orders_curr, 0) as orders_curr,
-                    COALESCE(b.revenue_base, 0) as rev_base,
-                    COALESCE(c.revenue_curr, 0) as rev_curr
-                FROM base b
-                FULL OUTER JOIN curr c ON b.category = c.category
-            """
-            cat_rows = con.execute(cat_query).fetchall()
 
-            # 2. Operational indicator co-movement query (delivery delay, review score)
-            ops_query = f"""
-                SELECT 
-                    strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') as mo,
-                    ROUND(AVG(EXTRACT(EPOCH FROM (o.order_delivered_customer_date - o.order_purchase_timestamp))/86400.0), 2) as avg_days_delivery,
-                    ROUND(AVG(r.review_score), 2) as avg_csat,
-                    ROUND(SUM(oi.freight_value) / NULLIF(SUM(oi.price), 0), 4) as freight_ratio
-                FROM orders o
-                JOIN customers c ON o.customer_id = c.customer_id
-                JOIN order_items oi ON o.order_id = oi.order_id
-                LEFT JOIN order_reviews r ON o.order_id = r.order_id
-                WHERE c.customer_state = '{region}'
-                  AND o.order_status = 'delivered'
-                  AND strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') IN ('{period_baseline}', '{period_current}')
-                GROUP BY 1
-                ORDER BY 1
-            """
-            ops_rows = con.execute(ops_query).fetchall()
+        # Temporary fetchers isolate the legacy analysis from DuckDB and SQL construction.
+        baseline_period = pd.Period(period_baseline, freq="M")
+        current_period = pd.Period(period_current, freq="M")
+        try:
+            lines, _metadata = fetch_order_lines(
+                baseline_period.start_time,
+                (max(baseline_period, current_period) + 1).start_time,
+                units=region,
+                grain="month",
+            )
+        except UnknownUnitError:
+            echoed_region = str(region)[:40]
+            return AnalystOutput(
+                analyst_name=self.name,
+                status="insufficient_evidence",
+                verdict="",
+                summary="",
+                caveats=[f"Region '{echoed_region}' is not in the warehouse."],
+            )
+        lines["month"] = pd.to_datetime(lines["period"]).dt.strftime("%Y-%m")
+        grouped = lines.groupby(["dimension", "month"], as_index=False).agg(
+            value=("value", "sum"), volume=("volume", "sum")
+        )
+        wide = grouped.pivot(index="dimension", columns="month", values=["volume", "value"]).fillna(0)
+        cat_rows = [
+            (category, row.get(("volume", period_baseline), 0), row.get(("volume", period_current), 0),
+             row.get(("value", period_baseline), 0), row.get(("value", period_current), 0))
+            for category, row in wide.iterrows()
+        ]
 
-            # 3. Benchmark control group query (DiD comparison with RJ, MG)
-            did_query = f"""
-                SELECT 
-                    c.customer_state as state,
-                    strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') as mo,
-                    COUNT(DISTINCT o.order_id) as order_cnt
-                FROM orders o
-                JOIN customers c ON o.customer_id = c.customer_id
-                WHERE c.customer_state IN ('{region}', 'RJ', 'MG')
-                  AND o.order_status = 'delivered'
-                  AND strftime(DATE_TRUNC('month', o.order_purchase_timestamp), '%Y-%m') IN ('{period_baseline}', '{period_current}')
-                GROUP BY 1, 2
-                ORDER BY 1, 2
-            """
-            did_rows = con.execute(did_query).fetchall()
+        indicators, _metadata = fetch_indicators(
+            baseline_period.start_time, (max(baseline_period, current_period) + 1).start_time, units=region, grain="month"
+        )
+        indicators["month"] = pd.to_datetime(indicators["period"]).dt.strftime("%Y-%m")
+        ops_rows = []
+        for month, subset in indicators.groupby("month"):
+            values = subset.set_index("name")["value"]
+            ops_rows.append((month, values.get("delivery_days"), values.get("csat"), values.get("freight_ratio")))
 
-        finally:
-            con.close()
+        customers, _metadata = fetch_customer_orders(baseline_period.start_time, (max(baseline_period, current_period) + 1).start_time)
+        customers["month"] = pd.to_datetime(customers["order_purchase_timestamp"]).dt.strftime("%Y-%m")
+        did_rows = customers[customers["customer_state"].isin([region, "RJ", "MG"])]
+        did_rows = did_rows.groupby(["customer_state", "month"], as_index=False)["order_id"].nunique()
+        did_rows = list(did_rows.itertuples(index=False, name=None))
 
         # 4. Perform Contribution Decomposition (§B10.2)
         df_cat = pd.DataFrame(cat_rows, columns=["category", "orders_base", "orders_curr", "rev_base", "rev_curr"])

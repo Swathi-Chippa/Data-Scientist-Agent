@@ -9,7 +9,6 @@ Implements:
 - Segment-level aggregation: Expected Revenue at Risk = Probability(Churn) * Segment Monetary Value
 - Mandatory explicit disclosure: "97.0% of warehouse customers are one-time buyers"
 """
-import duckdb
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List, Optional
@@ -19,6 +18,8 @@ from sklearn.metrics import roc_auc_score, average_precision_score, brier_score_
 from sklearn.calibration import calibration_curve
 from src.config import DB_PATH, CHURN_INACTIVITY_DAYS
 from src.analysts.base import BaseAnalyst, AnalystOutput
+from src.analysts.fetchers_olist import fetch_risk_features, validate_grain
+from src.analysts.legacy_base import LEGACY_WINDOWS
 
 
 class RiskAnalyst(BaseAnalyst):
@@ -32,71 +33,26 @@ class RiskAnalyst(BaseAnalyst):
         """
         Executes chronological churn modeling and segment risk ranking.
         """
-        cutoff_date = context.get("cutoff_date", "2018-03-01")
-        outcome_end_date = context.get("outcome_end_date", "2018-06-01")
-
-        con = duckdb.connect(self.db_path, read_only=True)
-        try:
-            # 1. Chronological Feature & Outcome Extraction
-            # Strict chronological split: features computed exclusively prior to cutoff_date
-            query = f"""
-                WITH pre_cutoff_customers AS (
-                    SELECT 
-                        c.customer_unique_id,
-                        COUNT(DISTINCT o.order_id) as freq,
-                        ROUND(SUM(oi.price), 2) as monetary,
-                        ROUND(MIN(date_diff('day', o.order_purchase_timestamp, TIMESTAMP '{cutoff_date}')), 1) as recency_days,
-                        ROUND(AVG(date_diff('day', o.order_purchase_timestamp, o.order_delivered_customer_date)), 1) as avg_delivery_days,
-                        ROUND(AVG(r.review_score), 2) as avg_review_score,
-                        MAX(c.customer_state) as state
-                    FROM customers c
-                    JOIN orders o ON c.customer_id = o.customer_id
-                    JOIN order_items oi ON o.order_id = oi.order_id
-                    LEFT JOIN order_reviews r ON o.order_id = r.order_id
-                    WHERE o.order_status = 'delivered'
-                      AND o.order_purchase_timestamp < TIMESTAMP '{cutoff_date}'
-                    GROUP BY 1
-                ),
-                post_cutoff_activity AS (
-                    SELECT DISTINCT c.customer_unique_id
-                    FROM customers c
-                    JOIN orders o ON c.customer_id = o.customer_id
-                    WHERE o.order_status = 'delivered'
-                      AND o.order_purchase_timestamp >= TIMESTAMP '{cutoff_date}'
-                      AND o.order_purchase_timestamp < TIMESTAMP '{outcome_end_date}'
+        legacy_defaults = LEGACY_WINDOWS["risk"]["defaults"]
+        cutoff_date = context.get("cutoff_date", legacy_defaults["cutoff_date"])
+        outcome_end_date = context.get("outcome_end_date", legacy_defaults["outcome_end_date"])
+        requested_grain = context.get("time_grain")
+        if requested_grain is not None:
+            try:
+                validate_grain(requested_grain)
+            except ValueError:
+                echoed_grain = str(requested_grain)[:40]
+                return AnalystOutput(
+                    analyst_name=self.name,
+                    status="insufficient_evidence",
+                    verdict="",
+                    summary="",
+                    caveats=[f"Time grain '{echoed_grain}' is not supported."],
                 )
-                SELECT 
-                    p.customer_unique_id,
-                    p.freq,
-                    p.monetary,
-                    p.recency_days,
-                    COALESCE(p.avg_delivery_days, 12.0) as delivery_days,
-                    COALESCE(p.avg_review_score, 4.0) as review_score,
-                    p.state,
-                    CASE WHEN act.customer_unique_id IS NULL THEN 1 ELSE 0 END as churn_label
-                FROM pre_cutoff_customers p
-                LEFT JOIN post_cutoff_activity act ON p.customer_unique_id = act.customer_unique_id
-                ORDER BY (act.customer_unique_id IS NOT NULL) DESC, p.monetary DESC
-                LIMIT 8000
-            """
-            rows = con.execute(query).fetchall()
 
-            # Global one-time buyer stats
-            buyer_stats = con.execute("""
-                SELECT 
-                    COUNT(DISTINCT customer_unique_id) as total_customers,
-                    COUNT(DISTINCT CASE WHEN order_count = 1 THEN customer_unique_id END) as one_time_customers
-                FROM (
-                    SELECT c.customer_unique_id, COUNT(DISTINCT o.order_id) as order_count
-                    FROM customers c
-                    JOIN orders o ON c.customer_id = o.customer_id
-                    WHERE o.order_status = 'delivered'
-                    GROUP BY 1
-                )
-            """).fetchone()
-
-        finally:
-            con.close()
+        features, feature_metadata = fetch_risk_features(cutoff_date, outcome_end_date)
+        rows = list(features.itertuples(index=False, name=None))
+        buyer_stats = feature_metadata["buyer_stats"]
 
         total_cust = buyer_stats[0] if buyer_stats else 93358
         one_time_cust = buyer_stats[1] if buyer_stats else 90557

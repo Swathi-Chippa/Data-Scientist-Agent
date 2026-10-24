@@ -10,13 +10,14 @@ Implements:
 - False-discovery rate (FDR) control using Benjamini-Hochberg across multiple units
 - Minimum volume guard (fails closed to 'insufficient evidence')
 """
-import duckdb
 import numpy as np
 import pandas as pd
 from scipy import stats
 from typing import Dict, Any, List, Optional
 from src.config import DB_PATH, MIN_VOLUME_FOR_ANOMALY, ANOMALY_Z_SCORE_THRESHOLD, FDR_Q_VALUE
 from src.analysts.base import BaseAnalyst, AnalystOutput
+from src.analysts.fetchers_olist import UnknownUnitError, fetch_weekly_orders
+from src.analysts.legacy_base import LEGACY_WINDOWS
 
 
 class AnomalyAnalyst(BaseAnalyst):
@@ -30,30 +31,42 @@ class AnomalyAnalyst(BaseAnalyst):
         """
         Runs anomaly evaluation for the given metric and region/dimension.
         """
-        region = context.get("region") or context.get("region_or_filter") or "SP"
-        metric_name = context.get("metric") or "orders"
-        time_grain = context.get("time_grain") or "week"
+        legacy_defaults = LEGACY_WINDOWS["anomaly"]["defaults"]
+        region = context.get("region") or context.get("region_or_filter") or legacy_defaults["region"]
+        metric_name = context.get("metric") or legacy_defaults["metric"]
+        time_grain = context.get("time_grain") or legacy_defaults["time_grain"]
 
-        # 1. Fetch time series from warehouse
-        con = duckdb.connect(self.db_path, read_only=True)
+        # 1. Temporary BE-1-compatible table fetch.  Analysis remains unchanged.
+        legacy_window = LEGACY_WINDOWS["anomaly"]
         try:
-            # Query weekly series up to valid historical window (excluding tail cutoff truncation)
-            query = f"""
-                SELECT 
-                    strftime(DATE_TRUNC('{time_grain}', o.order_purchase_timestamp), '%Y-%m-%d') as period,
-                    COUNT(DISTINCT o.order_id) as actual_value
-                FROM orders o
-                JOIN customers c ON o.customer_id = c.customer_id
-                WHERE c.customer_state = '{region}'
-                  AND o.order_status = 'delivered'
-                  AND o.order_purchase_timestamp >= '2017-06-01'
-                  AND o.order_purchase_timestamp < '2018-08-25'
-                GROUP BY 1
-                ORDER BY 1
-            """
-            rows = con.execute(query).fetchall()
-        finally:
-            con.close()
+            series, _metadata = fetch_weekly_orders(
+                units=region,
+                period_start=legacy_window["period_start"],
+                period_end=legacy_window["period_end"],
+                grain=time_grain,
+            )
+        except UnknownUnitError:
+            echoed_region = str(region)[:40]
+            return AnalystOutput(
+                analyst_name=self.name,
+                status="insufficient_evidence",
+                verdict="",
+                summary="",
+                caveats=[f"Region '{echoed_region}' is not in the warehouse."],
+            )
+        except ValueError:
+            echoed_grain = str(time_grain)[:40]
+            return AnalystOutput(
+                analyst_name=self.name,
+                status="insufficient_evidence",
+                verdict="",
+                summary="",
+                caveats=[f"Time grain '{echoed_grain}' is not supported."],
+            )
+        series = series.sort_values("period")
+        df = series.rename(columns={"value": "actual_value"})[["period", "actual_value"]]
+        df["period"] = df["period"].astype(str)
+        rows = list(df.itertuples(index=False, name=None))
 
         if not rows or len(rows) < 8:
             return AnalystOutput(
@@ -64,7 +77,7 @@ class AnomalyAnalyst(BaseAnalyst):
                 caveats=["Historical time series is too short to estimate seasonal expectation."]
             )
 
-        df = pd.DataFrame(rows, columns=["period", "actual_value"])
+        df = df.copy()
         # Drop tail boundary period if truncated
         if len(df) > 1 and df["actual_value"].iloc[-1] < df["actual_value"].iloc[-2] * 0.4:
             df = df.iloc[:-1]
