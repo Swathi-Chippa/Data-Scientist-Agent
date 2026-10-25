@@ -1,3 +1,5 @@
+Superseded by CALIBRATION_STUDY_V2.md: this version counted power over about 34 post-history periods instead of the 4 scored periods.
+
 # Calibration Study
 
 Seed: 20261024. Generator: negative-binomial counts, 60 periods, 26 trailing history periods, 4 scored periods, 4,000 series per cell. S2 contaminates one history point by x2.5 and one by x0.4. S3 shifts the four scored periods to 75% of the mean.
