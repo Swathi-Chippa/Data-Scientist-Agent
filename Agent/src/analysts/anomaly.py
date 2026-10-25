@@ -1,232 +1,76 @@
-"""
-Step 11a - Anomaly Analyst (§B10.1).
-Evaluates whether metric drops or spikes are statistically unusual.
-Implements:
-- Regular weekly/monthly aggregation
-- Incomplete boundary period filtering
-- Robust seasonal baseline (Median & MAD / ETS decomposition) fitted on history excluding test period
-- Prediction intervals
-- Change-point detection (level shift vs transient spike)
-- False-discovery rate (FDR) control using Benjamini-Hochberg across multiple units
-- Minimum volume guard (fails closed to 'insufficient evidence')
-"""
-import numpy as np
-import pandas as pd
-from scipy import stats
-from typing import Dict, Any, List, Optional
-from src.config import DB_PATH, MIN_VOLUME_FOR_ANOMALY, ANOMALY_Z_SCORE_THRESHOLD, FDR_Q_VALUE
-from src.analysts.base import BaseAnalyst, AnalystOutput
+"""Legacy wrapper for the pure B10.0/B10.1 anomaly core."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from typing import Any, Dict
+
+from src.analysts.base import AnalystOutput, BaseAnalyst
+from src.analysts.core.anomaly import run_anomaly
+from src.analysts.core.params import AnomalyParams, DQParams
+from src.config import DB_PATH
 from src.analysts.fetchers_olist import UnknownUnitError, fetch_weekly_orders
-from src.analysts.legacy_base import LEGACY_WINDOWS
+from src.analysts.legacy_base import legacy_output_from_v2
+
+# TEMPORARY, Olist-specific: starts at the first sustained >=30-event run
+# used by the legacy data-quality window. BE-1 table supply will replace it.
+OLIST_ANALYSIS_START = "2017-01-16"  # temporary, Olist-specific
 
 
 class AnomalyAnalyst(BaseAnalyst):
-    """Statistical anomaly detector with seasonality awareness and FDR control."""
+    """Thin compatibility wrapper; all analysis lives in the pure core."""
 
     def __init__(self, db_path: str = DB_PATH):
         super().__init__(name="AnomalyAnalyst")
         self.db_path = db_path
 
+    @staticmethod
+    def _insufficient(name: str, caveat: str) -> AnalystOutput:
+        return AnalystOutput(analyst_name=name, status="insufficient_evidence", verdict="", summary="", caveats=[caveat])
+
     def run(self, context: Dict[str, Any]) -> AnalystOutput:
-        """
-        Runs anomaly evaluation for the given metric and region/dimension.
-        """
-        legacy_defaults = LEGACY_WINDOWS["anomaly"]["defaults"]
-        region = context.get("region") or context.get("region_or_filter") or legacy_defaults["region"]
-        metric_name = context.get("metric") or legacy_defaults["metric"]
-        time_grain = context.get("time_grain") or legacy_defaults["time_grain"]
-
-        # 1. Temporary BE-1-compatible table fetch.  Analysis remains unchanged.
-        legacy_window = LEGACY_WINDOWS["anomaly"]
+        defaults = {"region": "SP", "metric": "orders", "time_grain": "week"}
+        region = context.get("region") or context.get("region_or_filter") or defaults["region"]
+        metric = context.get("metric") or defaults["metric"]
+        grain = context.get("time_grain") or defaults["time_grain"]
         try:
-            series, _metadata = fetch_weekly_orders(
-                units=region,
-                period_start=legacy_window["period_start"],
-                period_end=legacy_window["period_end"],
-                grain=time_grain,
-            )
+            series, metadata = fetch_weekly_orders(units=None, period_start=OLIST_ANALYSIS_START, period_end=None, grain=grain)
+            if not isinstance(region, str) or region not in set(series.get("unit", [])):
+                raise UnknownUnitError(f"Unknown customer_state value: {region!r}")
         except UnknownUnitError:
-            echoed_region = str(region)[:40]
-            return AnalystOutput(
-                analyst_name=self.name,
-                status="insufficient_evidence",
-                verdict="",
-                summary="",
-                caveats=[f"Region '{echoed_region}' is not in the warehouse."],
-            )
+            return self._insufficient(self.name, f"Region '{str(region)[:40]}' is not in the warehouse.")
         except ValueError:
-            echoed_grain = str(time_grain)[:40]
-            return AnalystOutput(
-                analyst_name=self.name,
-                status="insufficient_evidence",
-                verdict="",
-                summary="",
-                caveats=[f"Time grain '{echoed_grain}' is not supported."],
-            )
-        series = series.sort_values("period")
-        df = series.rename(columns={"value": "actual_value"})[["period", "actual_value"]]
-        df["period"] = df["period"].astype(str)
-        rows = list(df.itertuples(index=False, name=None))
+            return self._insufficient(self.name, f"Time grain '{str(grain)[:40]}' is not supported.")
 
-        if not rows or len(rows) < 8:
-            return AnalystOutput(
-                analyst_name=self.name,
-                status="insufficient_evidence",
-                verdict="Insufficient history",
-                summary=f"Only {len(rows)} time periods available for region '{region}'. Minimum 8 required.",
-                caveats=["Historical time series is too short to estimate seasonal expectation."]
-            )
+        # static historical dataset: freshness is informational only.
+        params = AnomalyParams(grain=grain, target_unit=str(region), dq=DQParams(grain=grain, expected_freshness_hours=None))
+        core = run_anomaly(params, {"series": series, "load_meta": metadata, "as_of": datetime.now(timezone.utc)}, seed=int(context.get("seed", 0)))
+        values = core.model_dump()
 
-        df = df.copy()
-        # Drop tail boundary period if truncated
-        if len(df) > 1 and df["actual_value"].iloc[-1] < df["actual_value"].iloc[-2] * 0.4:
-            df = df.iloc[:-1]
+        def result_values(data: dict[str, Any]) -> dict[str, Any]:
+            return data.get("result") or {}
 
-        # 2. Volume Guard Check (§B10.1)
-        mean_volume = df["actual_value"].mean()
-        if mean_volume < MIN_VOLUME_FOR_ANOMALY:
-            return AnalystOutput(
-                analyst_name=self.name,
-                status="insufficient_evidence",
-                verdict="Volume guard triggered",
-                summary=f"Average volume in {region} ({mean_volume:.1f} per period) is below the minimum reliability threshold of {MIN_VOLUME_FOR_ANOMALY}.",
-                caveats=["Statistical anomaly detection suppressed on low-volume units to avoid false positives."]
-            )
+        def verdict_template(data: dict[str, Any]) -> str:
+            verdict = result_values(data).get("verdict", "")
+            return {"unusual": "Statistically Unusual Anomaly Confirmed", "within_normal_range": "Within Normal Historical Variation", "data_issue_suspected": "Data Quality Issue Suspected", "insufficient_evidence": "Insufficient history"}.get(verdict, "")
 
-        # 3. Fit baseline on history excluding recent test period (last 4 periods)
-        test_periods = 4
-        train_df = df.iloc[:-test_periods]
-        test_df = df.iloc[-test_periods:].copy()
+        def summary_template(data: dict[str, Any]) -> str:
+            result = result_values(data)
+            if not result:
+                return data.get("reason", "")
+            peer = result.get("peer_rank") or {}
+            peer_text = f" {peer['n_at_least_as_large']} of {peer['n_units']} states show a deviation at least this large (rank {peer['rank']})." if peer else ""
+            screen_text = ""
+            for flag in data.get("flags", []):
+                if flag.startswith("screen_excluded_periods="):
+                    periods = [item for item in flag.split("=", 1)[1].split(",") if item]
+                    if periods:
+                        screen_text = f" {len(periods)} earlier periods ({', '.join(periods)}) were excluded from the baseline as outliers."
+            return f"{metric} in {region} ended at {result['actual']:.1f}; expected {result['expected']:.1f} with a {result['deviation_pct'] * 100.0:.1f}% deviation. Expected range: [{result['expected_range'][0]:.1f}, {result['expected_range'][1]:.1f}].{peer_text}{screen_text}"
 
-        # Compute robust baseline metrics
-        median_val = float(train_df["actual_value"].median())
-        mad = float(np.median(np.abs(train_df["actual_value"] - median_val)))
-        sigma_est = max(mad * 1.4826, 1.0)  # Consistent estimator of normal standard deviation
-
-        # 95% Prediction Interval bounds
-        z_crit = 1.96
-        lower_bound = max(0.0, median_val - z_crit * sigma_est)
-        upper_bound = median_val + z_crit * sigma_est
-
-        # Evaluate test points
-        anomalies_detected = []
-        series_table = []
-
-        for _, row in df.iterrows():
-            p_val = float(row["actual_value"])
-            dev = p_val - median_val
-            pct_dev = (dev / median_val) * 100.0 if median_val > 0 else 0.0
-            z_score = dev / sigma_est
-            p_value = 2.0 * (1.0 - stats.norm.cdf(abs(z_score)))
-
-            is_anomaly = abs(z_score) >= ANOMALY_Z_SCORE_THRESHOLD
-            if is_anomaly:
-                anomalies_detected.append({
-                    "period": row["period"],
-                    "actual": p_val,
-                    "expected": round(median_val, 1),
-                    "pct_dev": round(pct_dev, 1),
-                    "z_score": round(z_score, 2),
-                    "p_value": p_value
-                })
-
-            series_table.append({
-                "period": row["period"],
-                "actual": p_val,
-                "expected": round(median_val, 1),
-                "lower_bound": round(lower_bound, 1),
-                "upper_bound": round(upper_bound, 1),
-                "is_anomaly": is_anomaly
-            })
-
-        # 4. Multi-Unit Benjamini-Hochberg FDR correction simulation
-        fdr_applied = False
-        significant_anomalies = []
-        if anomalies_detected:
-            # Sort by p-value
-            anomalies_detected.sort(key=lambda x: x["p_value"])
-            m = len(df)
-            for i, a in enumerate(anomalies_detected, 1):
-                bh_thresh = (i / m) * FDR_Q_VALUE
-                if a["p_value"] <= bh_thresh or abs(a["z_score"]) >= 3.0:
-                    significant_anomalies.append(a)
-            fdr_applied = True
-        else:
-            significant_anomalies = []
-
-        # 5. Change-Point Check (Level shift vs transient spike)
-        # Check cumulative sum of deviations in test window
-        test_deviations = test_df["actual_value"] - median_val
-        is_sustained_shift = (test_deviations < -1.5 * sigma_est).sum() >= 2
-
-        # 6. Construct Verdict and Evidence Claims
-        if significant_anomalies:
-            most_severe = min(significant_anomalies, key=lambda x: x["z_score"]) if any(x["z_score"] < 0 for x in significant_anomalies) else significant_anomalies[0]
-            verdict = "Statistically Unusual Anomaly Confirmed"
-            summary = (
-                f"Weekly orders in {region} dropped sharply to {most_severe['actual']} "
-                f"({abs(most_severe['pct_dev'])}% below seasonal expectation of {most_severe['expected']}) "
-                f"during period {most_severe['period']}. Robust z-score = {most_severe['z_score']} "
-                f"(statistically significant under Benjamini-Hochberg FDR control with q={FDR_Q_VALUE})."
-            )
-            if is_sustained_shift:
-                summary += " Change-point analysis indicates a sustained downward level shift rather than a transient one-week spike."
-            else:
-                summary += " Pattern is characteristic of a transient shock."
-
-            claims = [
-                {
-                    "text": f"Weekly orders in {region} fell {abs(most_severe['pct_dev'])}% below expected baseline ({most_severe['actual']} vs {most_severe['expected']}).",
-                    "grade": 0,
-                    "data": most_severe
-                },
-                {
-                    "text": f"Deviation is statistically significant (robust z-score = {most_severe['z_score']}, p < 0.01).",
-                    "grade": 0,
-                    "data": {"z_score": most_severe["z_score"]}
-                }
-            ]
-        else:
-            verdict = "Within Normal Historical Variation"
-            recent_actual = float(test_df["actual_value"].iloc[-1])
-            recent_dev = round(((recent_actual - median_val) / median_val) * 100.0, 1)
-            summary = (
-                f"Recent order volume in {region} ({recent_actual} orders, {recent_dev}% vs baseline) "
-                f"remains within expected 95% prediction intervals [{lower_bound:.0f}, {upper_bound:.0f}]. "
-                "No statistically significant anomaly detected."
-            )
-            claims = [
-                {
-                    "text": f"Orders in {region} ({recent_actual}) remain within 95% expectation bounds [{lower_bound:.0f}, {upper_bound:.0f}].",
-                    "grade": 0,
-                    "data": {"actual": recent_actual, "lower": lower_bound, "upper": upper_bound}
-                }
-            ]
-
-        return AnalystOutput(
-            analyst_name=self.name,
-            status="success",
-            verdict=verdict,
-            summary=summary,
-            metrics={
-                "region": region,
-                "median_baseline": round(median_val, 1),
-                "lower_bound_95": round(lower_bound, 1),
-                "upper_bound_95": round(upper_bound, 1),
-                "anomalies_count": len(significant_anomalies),
-                "is_sustained_level_shift": is_sustained_shift,
-                "fdr_alpha": FDR_Q_VALUE
-            },
-            tables={
-                "time_series": series_table[-12:]
-            },
-            assumptions=[
-                "Baseline estimated using Median & MAD estimator on historical periods excluding test window.",
-                f"95% prediction intervals calibrated with robust standard deviation (sigma={round(sigma_est, 1)}).",
-                "Multiple testing controlled via Benjamini-Hochberg FDR procedure."
-            ],
-            caveats=[
-                "Local holidays and promotional events may influence short-term order variation."
-            ],
-            evidence_claims=claims
-        )
+        result = result_values(values)
+        claim_templates = [(0, lambda data: f"{metric} in {region} measured {result_values(data).get('actual', 0.0):.1f} versus an expected {result_values(data).get('expected', 0.0):.1f}. {result_values(data).get('peer_rank', {}).get('n_at_least_as_large', 0)} of {result_values(data).get('peer_rank', {}).get('n_units', 0)} states show a deviation at least this large (rank {result_values(data).get('peer_rank', {}).get('rank', 0)}).", lambda data: {"actual": result_values(data).get("actual"), "expected": result_values(data).get("expected"), "peer_rank": result_values(data).get("peer_rank")})] if values.get("status") == "ok" else []
+        metrics = {"region": region, "metric": metric, "median_baseline": result.get("expected"), "expected": result.get("expected"), "actual": result.get("actual"), "deviation_pct": result.get("deviation_pct"), "expected_range": result.get("expected_range"), "robust_score": result.get("robust_score"), "history_periods_used": result.get("history_periods_used"), "peer_rank": result.get("peer_rank"), "correction_used": result.get("correction_used"), "persistence": result.get("persistence"), "change_point": result.get("change_point"), "data_quality": result.get("data_quality")} if result else {}
+        target_series = series[series["unit"].astype(str) == str(region)] if "unit" in series.columns else series
+        tables = {"time_series": target_series.tail(12).to_dict(orient="records")} if not target_series.empty else {}
+        return legacy_output_from_v2(core, analyst_name=self.name, verdict_template=verdict_template, summary_template=summary_template, claim_templates=claim_templates, metrics=metrics, tables=tables, assumptions=["The pure anomaly core excludes incomplete boundary periods before scoring."], caveats=[f"Excluded periods are recorded by the Data Quality Gate: {values.get('flags', [])}"])
